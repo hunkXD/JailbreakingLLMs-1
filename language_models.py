@@ -4,6 +4,56 @@ from config import TOGETHER_MODEL_NAMES, LITELLM_TEMPLATES, API_KEY_NAMES, Model
 from loggers import logger
 from common import get_api_key
 
+
+class PerplexityModel:
+    """Perplexity AI model wrapper"""
+
+    def __init__(self, model_name='llama-3.1-sonar-large-128k-online', max_tokens=150, temperature=1.0):
+        self.model_name = model_name
+        self.max_tokens = max_tokens
+        self.temperature = temperature
+
+        # Get API key
+        import os
+        self.api_key = os.environ.get('PERPLEXITYAI_API_KEY')
+        if not self.api_key:
+            raise ValueError("PERPLEXITYAI_API_KEY not set")
+
+        self.API_URL = "https://api.perplexity.ai/chat/completions"
+
+    def get_response(self, messages):
+        """Get response from Perplexity"""
+        import requests
+
+        # Format messages
+        if isinstance(messages, str):
+            messages = [{"role": "user", "content": messages}]
+        elif isinstance(messages, list) and isinstance(messages[0], str):
+            messages = [{"role": "user", "content": msg} for msg in messages]
+
+        response = requests.post(
+            self.API_URL,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": self.model_name,
+                "messages": messages,
+                "max_tokens": self.max_tokens,
+                "temperature": self.temperature
+            }
+        )
+
+        if response.status_code != 200:
+            raise Exception(f"Perplexity API error: {response.text}")
+
+        return response.json()["choices"][0]["message"]["content"]
+
+    def batched_generate(self, messages_list):
+        """Generate responses for multiple message lists"""
+        return [self.get_response(msgs) for msgs in messages_list]
+
 class LanguageModel():
     def __init__(self, model_name):
         self.model_name = Model(model_name)

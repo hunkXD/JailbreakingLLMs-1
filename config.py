@@ -14,6 +14,7 @@ class Model(Enum):
     llama_2 = "llama-2-7b-chat-hf"
     gpt_3_5 = "gpt-3.5-turbo-1106"
     gpt_4 = "gpt-4-0125-preview"
+    gpt_4_1 = "gpt-4.1-2025-04-14"
     claude_1 = "claude-instant-1.2"
     claude_2 = "claude-2.1"
     gemini = "gemini-pro"
@@ -37,6 +38,7 @@ TOGETHER_MODEL_NAMES: dict[Model, str] = {
 FASTCHAT_TEMPLATE_NAMES: dict[Model, str] = {
     Model.gpt_3_5: "gpt-3.5-turbo",
     Model.gpt_4: "gpt-4",
+    Model.gpt_4_1: "gpt-4.1",
     Model.claude_1: "claude-instant-1.2",
     Model.claude_2: "claude-2.1",
     Model.gemini: "gemini-pro",
@@ -48,9 +50,10 @@ FASTCHAT_TEMPLATE_NAMES: dict[Model, str] = {
 API_KEY_NAMES: dict[Model, str] = {
     Model.gpt_3_5:  "OPENAI_API_KEY",
     Model.gpt_4:    "OPENAI_API_KEY",
+    Model.gpt_4_1:    "OPENAI_API_KEY",
     Model.claude_1: "ANTHROPIC_API_KEY",
     Model.claude_2: "ANTHROPIC_API_KEY",
-    Model.gemini:   "GEMINI_API_KEY",
+    Model.gemini:   "GOOGLE_API_KEY",
     Model.vicuna:   "TOGETHER_API_KEY",
     Model.llama_2:  "TOGETHER_API_KEY",
     Model.mixtral:  "TOGETHER_API_KEY",

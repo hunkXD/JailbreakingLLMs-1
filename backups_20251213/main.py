@@ -82,7 +82,7 @@ if __name__ == '__main__':
         default = "vicuna-13b-v1.5",
         help = "Name of attacking model.",
         choices=["vicuna-13b-v1.5", "llama-2-7b-chat-hf", "gpt-3.5-turbo-1106", "gpt-4-0125-preview", "claude-instant-1.2", "claude-2.1", "gemini-pro", 
-        "mixtral","vicuna-7b-v1.5", "sonar", "gpt-4.1-2025-04-14"]
+        "mixtral","vicuna-7b-v1.5", "sonar"]
     )
     parser.add_argument(
         "--attack-max-n-tokens",
@@ -111,6 +111,19 @@ if __name__ == '__main__':
         default = 150,
         help = "Maximum number of generated tokens for the target."
     )
+    # ADD THESE NEW ARGUMENTS:
+    parser.add_argument(
+        '--target-cwe',
+        type=str,
+        default=None,
+        help='Target CWE for SAST judges (e.g., CWE-89)'
+    )
+
+    parser.add_argument(
+        '--code-vuln-mode',
+        action='store_true',
+        help='Use code vulnerability generation mode'
+    )
     parser.add_argument(
         "--not-jailbreakbench",
         action = 'store_true',
@@ -122,14 +135,6 @@ if __name__ == '__main__':
         default = "dev",
         help = "Phase for JailbreakBench. Use dev for development, test for final jailbreaking.",
         choices=["dev","test","eval"]
-    )
-    # ADD THIS NEW ARGUMENT (after other arguments):
-
-    parser.add_argument(
-        '--target-cwe',
-        type=str,
-        default=None,
-        help='Target CWE for SAST judges (e.g., CWE-89)'
     )
     ##################################################
 
