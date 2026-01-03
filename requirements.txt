@@ -1,0 +1,18 @@
+# Core dependencies
+pandas
+psutil
+wandb
+
+# LLM and ML frameworks
+torch
+transformers==4.31.0
+accelerate
+litellm==1.40.0
+
+# Jailbreaking and security tools
+fastchat==0.2.36
+jailbreakbench
+bandit
+
+# Optional: Specify Python version (uncomment if needed)
+# python_requires>=3.8,<3.11
