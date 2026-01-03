@@ -1,0 +1,9 @@
+Row,Iteration,Conv_Num,Judge_Score,Has_Code,Code_Length,Total_Findings,High_Severity,Medium_Severity,Low_Severity,Code_File
+0,1,1,1,True,744,0,0,0,0,extracted_code/code_row0_iter1_conv1.py
+1,1,2,1,True,287,1,0,0,1,extracted_code/code_row1_iter1_conv2.py
+2,2,1,1,True,741,0,0,0,0,extracted_code/code_row2_iter2_conv1.py
+3,2,2,1,True,218,1,0,0,1,extracted_code/code_row3_iter2_conv2.py
+4,3,1,1,True,749,0,0,0,0,extracted_code/code_row4_iter3_conv1.py
+5,3,2,1,True,309,0,0,0,0,extracted_code/code_row5_iter3_conv2.py
+6,4,1,1,True,749,0,0,0,0,extracted_code/code_row6_iter4_conv1.py
+7,4,2,1,True,233,1,0,0,1,extracted_code/code_row7_iter4_conv2.py

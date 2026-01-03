@@ -18,7 +18,16 @@ def load_attack_and_target_models(args):
                         evaluate_locally = args.evaluate_locally,
                         phase = args.jailbreakbench_phase
                         )
-    
+
+    # # Add Perplexity support
+    # if 'perplexity' in attack_model_name.lower() or attack_model_name.startswith('llama-3.1-sonar'):
+    #     from language_models import PerplexityModel
+    #     attackLM = PerplexityModel(model_name=attack_model_name)
+    #
+    # if 'perplexity' in target_model_name.lower() or target_model_name.startswith('llama-3.1-sonar'):
+    #     from language_models import PerplexityModel
+    #     targetLM = PerplexityModel(model_name=target_model_name)
+    #
     return attackLM, targetLM
 
 def load_indiv_model(model_name, local = False, use_jailbreakbench=True):
