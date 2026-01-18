@@ -3,6 +3,7 @@ import litellm
 from config import TOGETHER_MODEL_NAMES, LITELLM_TEMPLATES, API_KEY_NAMES, Model
 from loggers import logger
 from common import get_api_key
+import time
 
 
 class PerplexityModel:
@@ -107,37 +108,105 @@ class APILiteLLM(LanguageModel):
             self.post_message = LITELLM_TEMPLATES[self.model_name]["post_message"]
         else:
             self.post_message = ""
-        
-    
-    
-    def batched_generate(self, convs_list: list[list[dict]], 
-                         max_n_tokens: int, 
-                         temperature: float, 
+
+    def batched_generate(self, convs_list: list[list[dict]],
+                         max_n_tokens: int,
+                         temperature: float,
                          top_p: float,
-                         extra_eos_tokens: list[str] = None) -> list[str]: 
-        
-        eos_tokens = self.eos_tokens 
+                         extra_eos_tokens: list[str] = None) -> list[str]:
+
+        eos_tokens = self.eos_tokens.copy()  # Make a copy to avoid modifying the original
 
         if extra_eos_tokens:
             eos_tokens.extend(extra_eos_tokens)
+
+        # CRITICAL FIX: OpenAI only allows max 4 stop sequences
+        if len(eos_tokens) > 4:
+            print(f"[WARNING] Truncating stop tokens from {len(eos_tokens)} to 4 (OpenAI limit)")
+            eos_tokens = eos_tokens[:4]
+
         if self.use_open_source_model:
             self._update_prompt_template()
-        
-        outputs = litellm.batch_completion(
-            model=self.litellm_model_name, 
-            messages=convs_list,
-            api_key=self.api_key,
-            temperature=temperature,
-            top_p=top_p,
-            max_tokens=max_n_tokens,
-            num_retries=self.API_MAX_RETRY,
-            seed=0,
-            stop=eos_tokens,
-        )
-        
-        responses = [output["choices"][0]["message"].content for output in outputs]
+        # ADDED: Retry logic with exponential backoff
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                outputs = litellm.batch_completion(
+                    model=self.litellm_model_name,
+                    messages=convs_list,
+                    api_key=self.api_key,
+                    temperature=temperature,
+                    top_p=top_p,
+                    max_tokens=max_n_tokens,
+                    num_retries=self.API_MAX_RETRY,
+                    seed=0,
+                    stop=eos_tokens,
+                )
+                break  # Success, exit retry loop
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                    print(f"[API RETRY] Attempt {attempt + 1} failed, retrying in {wait_time}s...")
+                    time.sleep(wait_time)
+                else:
+                    print(f"[API FATAL] All retry attempts failed: {e}")
+                    # Return default responses for all inputs
+                    return ["I apologize, but I cannot assist with that request."] * len(convs_list)
+
+        # FIXED ERROR HANDLING (same as above)
+        # FIXED ERROR HANDLING
+        responses = []
+        for i, output in enumerate(outputs):
+            try:
+                # Handle ModelResponse objects from litellm
+                if hasattr(output, 'choices') and hasattr(output, '__dict__'):
+                    # It's a ModelResponse object, access as attribute
+                    response = output.choices[0].message.content
+                    responses.append(response)
+                elif isinstance(output, dict) and "choices" in output:
+                    # It's a dictionary response
+                    response = output["choices"][0]["message"]["content"]
+                    responses.append(response)
+                else:
+                    # Handle error objects
+                    print(f"[API ERROR] Request {i} failed: {type(output).__name__}")
+                    if hasattr(output, 'message'):
+                        print(f"  Error message: {output.message}")
+                    responses.append("I apologize, but I cannot assist with that request.")
+            except (TypeError, KeyError, AttributeError, IndexError) as e:
+                print(f"[PARSE ERROR] Request {i} failed to parse: {e}")
+                responses.append("I apologize, but I cannot assist with that request.")
 
         return responses
+
+    # def batched_generate(self, convs_list: list[list[dict]],
+    #                      max_n_tokens: int,
+    #                      temperature: float,
+    #                      top_p: float,
+    #                      extra_eos_tokens: list[str] = None) -> list[str]:
+    #
+    #     eos_tokens = self.eos_tokens
+    #
+    #     if extra_eos_tokens:
+    #         eos_tokens.extend(extra_eos_tokens)
+    #     if self.use_open_source_model:
+    #         self._update_prompt_template()
+    #
+    #     outputs = litellm.batch_completion(
+    #         model=self.litellm_model_name,
+    #         messages=convs_list,
+    #         api_key=self.api_key,
+    #         temperature=temperature,
+    #         top_p=top_p,
+    #         max_tokens=max_n_tokens,
+    #         num_retries=self.API_MAX_RETRY,
+    #         seed=0,
+    #         stop=eos_tokens,
+    #     )
+    #
+    #     responses = [output["choices"][0]["message"].content for output in outputs]
+    #
+    #     return responses
 
 # class LocalvLLM(LanguageModel):
     

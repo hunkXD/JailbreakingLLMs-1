@@ -6,6 +6,8 @@ from common import process_target_response, initialize_conversations
 import psutil
 import os
 import time
+import weave
+
 def memory_usage_psutil():
     # Returns the memory usage in MB
     process = psutil.Process(os.getpid())
