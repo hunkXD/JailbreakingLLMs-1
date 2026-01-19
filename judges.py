@@ -20,15 +20,41 @@ import os
 #         return GCGJudge()
 #     else:
 #         raise NotImplementedError
+
+"""
+Add this to your judges.py to integrate DualSASTJudge
+"""
+
+
+# Add to load_judge() function:
+
 def load_judge(args):
-    """Load judge based on args"""
+    """Load judge based on args - now supports dual SAST"""
     judge_model = args.judge_model
     goal = args.goal
     target_str = args.target_str
     target_cwe = getattr(args, 'target_cwe', None)
 
-    # Check if SAST judge
-    if judge_model.startswith('sast-'):
+    # NEW: Check for dual SAST judge
+    if judge_model == 'dual-sast':
+        from dual_sast import DualSASTJudge
+
+        # Get tool names from args or use defaults
+        primary_tool = getattr(args, 'sast_primary', 'bandit')
+        secondary_tool = getattr(args, 'sast_secondary', 'semgrep')
+        consensus_threshold = getattr(args, 'consensus_threshold', 8)
+
+        return DualSASTJudge(
+            goal=goal,
+            target_str=target_str,
+            primary_tool=primary_tool,
+            secondary_tool=secondary_tool,
+            target_cwe=target_cwe,
+            consensus_threshold=consensus_threshold
+        )
+
+    # Check if single SAST judge
+    elif judge_model.startswith('sast-'):
         return SASTJudge(
             goal=goal,
             target_str=target_str,
@@ -36,12 +62,30 @@ def load_judge(args):
             target_cwe=target_cwe
         )
 
-    # Otherwise use existing judge loading logic
-    # (keep whatever was here before for LLM judges)
-    else:
-        # Your existing code for loading LLM judges
-        # DO NOT CHANGE THIS PART
-        pass
+    # ... rest of existing code for LLM judges ...
+
+# def load_judge(args):
+#     """Load judge based on args"""
+#     judge_model = args.judge_model
+#     goal = args.goal
+#     target_str = args.target_str
+#     target_cwe = getattr(args, 'target_cwe', None)
+#
+#     # Check if SAST judge
+#     if judge_model.startswith('sast-'):
+#         return SASTJudge(
+#             goal=goal,
+#             target_str=target_str,
+#             judge_model=judge_model,
+#             target_cwe=target_cwe
+#         )
+#
+#     # Otherwise use existing judge loading logic
+#     # (keep whatever was here before for LLM judges)
+#     else:
+#         # Your existing code for loading LLM judges
+#         # DO NOT CHANGE THIS PART
+#         pass
 
 class JudgeBase:
     def __init__(self, args):
