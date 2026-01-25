@@ -5,18 +5,19 @@ from config import FASTCHAT_TEMPLATE_NAMES, Model
 
 def load_attack_and_target_models(args):
     # create attack model and target model
-    attackLM = AttackLM(model_name = args.attack_model, 
-                        max_n_tokens = args.attack_max_n_tokens, 
-                        max_n_attack_attempts = args.max_n_attack_attempts, 
+    attackLM = AttackLM(model_name = args.attack_model,
+                        max_n_tokens = args.attack_max_n_tokens,
+                        max_n_attack_attempts = args.max_n_attack_attempts,
                         category = args.category,
                         evaluate_locally = args.evaluate_locally
                         )
-    
+
     targetLM = TargetLM(model_name = args.target_model,
                         category = args.category,
                         max_n_tokens = args.target_max_n_tokens,
                         evaluate_locally = args.evaluate_locally,
-                        phase = args.jailbreakbench_phase
+                        phase = args.jailbreakbench_phase,
+                        use_jailbreakbench = args.use_jailbreakbench
                         )
 
     # # Add Perplexity support
@@ -165,26 +166,27 @@ class TargetLM():
     """
         JailbreakBench class for target language models.
     """
-    def __init__(self, 
-            model_name: str, 
+    def __init__(self,
+            model_name: str,
             category: str,
             max_n_tokens : int,
             phase: str,
             evaluate_locally: bool = False,
             use_jailbreakbench: bool = True,
             ):
-        
-        self.model_name = model_name
+
+        self.model_name = Model(model_name)
         self.max_n_tokens = max_n_tokens
         self.phase = phase
         self.use_jailbreakbench = use_jailbreakbench
         self.evaluate_locally = evaluate_locally
 
-        from config import TARGET_TEMP,  TARGET_TOP_P   
+        from config import TARGET_TEMP,  TARGET_TOP_P
         self.temperature = TARGET_TEMP
         self.top_p = TARGET_TOP_P
 
-        self.model = load_indiv_model(model_name, evaluate_locally, use_jailbreakbench)            
+        self.model = load_indiv_model(model_name, evaluate_locally, use_jailbreakbench)
+        self.template = FASTCHAT_TEMPLATE_NAMES[self.model_name]
         self.category = category
 
     def get_response(self, prompts_list):

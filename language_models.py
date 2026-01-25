@@ -1,9 +1,17 @@
-import os 
+import os
 import litellm
 from config import TOGETHER_MODEL_NAMES, LITELLM_TEMPLATES, API_KEY_NAMES, Model
 from loggers import logger
 from common import get_api_key
 import time
+import warnings
+
+# Suppress verbose LiteLLM logging
+litellm.suppress_debug_info = True
+litellm.set_verbose = False
+
+# Suppress NumPy warnings about division
+warnings.filterwarnings('ignore', category=RuntimeWarning, message='.*invalid value encountered in scalar divide.*')
 
 
 class PerplexityModel:
@@ -127,21 +135,40 @@ class APILiteLLM(LanguageModel):
 
         if self.use_open_source_model:
             self._update_prompt_template()
+
+        # Determine correct parameters for newer OpenAI models
+        # GPT-4.1+, GPT-5.2+: use max_completion_tokens, no stop parameter
+        is_new_openai_model = any([
+            'gpt-5' in self.litellm_model_name.lower(),
+            'gpt-4.1' in self.litellm_model_name.lower(),
+        ])
+
+        # Build completion parameters
+        completion_params = {
+            'model': self.litellm_model_name,
+            'messages': convs_list,
+            'api_key': self.api_key,
+            'temperature': temperature,
+            'top_p': top_p,
+            'num_retries': self.API_MAX_RETRY,
+            'seed': 0,
+        }
+
+        # Add stop sequences only for models that support them
+        if not is_new_openai_model:
+            completion_params['stop'] = eos_tokens
+
+        # Add correct max tokens parameter based on model
+        if is_new_openai_model:
+            completion_params['max_completion_tokens'] = max_n_tokens
+        else:
+            completion_params['max_tokens'] = max_n_tokens
+
         # ADDED: Retry logic with exponential backoff
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                outputs = litellm.batch_completion(
-                    model=self.litellm_model_name,
-                    messages=convs_list,
-                    api_key=self.api_key,
-                    temperature=temperature,
-                    top_p=top_p,
-                    max_tokens=max_n_tokens,
-                    num_retries=self.API_MAX_RETRY,
-                    seed=0,
-                    stop=eos_tokens,
-                )
+                outputs = litellm.batch_completion(**completion_params)
                 break  # Success, exit retry loop
             except Exception as e:
                 if attempt < max_retries - 1:
@@ -153,26 +180,31 @@ class APILiteLLM(LanguageModel):
                     # Return default responses for all inputs
                     return ["I apologize, but I cannot assist with that request."] * len(convs_list)
 
-        # FIXED ERROR HANDLING (same as above)
         # FIXED ERROR HANDLING
         responses = []
         for i, output in enumerate(outputs):
             try:
+                response = None
                 # Handle ModelResponse objects from litellm
                 if hasattr(output, 'choices') and hasattr(output, '__dict__'):
                     # It's a ModelResponse object, access as attribute
                     response = output.choices[0].message.content
-                    responses.append(response)
                 elif isinstance(output, dict) and "choices" in output:
                     # It's a dictionary response
                     response = output["choices"][0]["message"]["content"]
-                    responses.append(response)
                 else:
                     # Handle error objects
                     print(f"[API ERROR] Request {i} failed: {type(output).__name__}")
                     if hasattr(output, 'message'):
                         print(f"  Error message: {output.message}")
-                    responses.append("I apologize, but I cannot assist with that request.")
+                    response = "I apologize, but I cannot assist with that request."
+
+                # Check for empty/None responses
+                if response is None or (isinstance(response, str) and response.strip() == ""):
+                    print(f"[API WARNING] Request {i} returned empty response. Full output: {output}")
+                    response = "I apologize, but I cannot assist with that request."
+
+                responses.append(response)
             except (TypeError, KeyError, AttributeError, IndexError) as e:
                 print(f"[PARSE ERROR] Request {i} failed to parse: {e}")
                 responses.append("I apologize, but I cannot assist with that request.")

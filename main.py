@@ -1,5 +1,7 @@
 import argparse
 from loggers import WandBLogger, logger
+# UPDATED: Use EnhancedWandBLogger for dual SAST
+from loggers import EnhancedWandBLogger, get_judge_type
 from judges import load_judge
 from conversers import load_attack_and_target_models
 from common import process_target_response, initialize_conversations
@@ -18,9 +20,6 @@ def memory_usage_psutil():
 def main(args):
     memory_before = memory_usage_psutil()
 
-
-
-
     # Initialize models and judge
     attackLM, targetLM = load_attack_and_target_models(args)
     judgeLM = load_judge(args)
@@ -29,10 +28,14 @@ def main(args):
     is_dual_sast = hasattr(judgeLM, 'check_consensus_success')
 
     # Initialize conversations
-    convs_list, processed_response_list, system_prompts = initialize_conversations(args.n_streams, args.goal, args.target_str, attackLM.template)
+    convs_list, processed_response_list, system_prompts = initialize_conversations(
+        args.n_streams, args.goal, args.target_str, attackLM.template
+    )
     batchsize = args.n_streams
-    
-    wandb_logger = WandBLogger(args, system_prompts)
+
+    judge_type = get_judge_type(args)
+    wandb_logger = EnhancedWandBLogger(args, system_prompts, judge_type=judge_type)
+
     target_response_list, judge_scores = None, None
 
     # Begin PAIR
@@ -62,6 +65,7 @@ def main(args):
         logger.debug("Finished getting target responses.")
 
         # Get judge scores - NOW SCANS ALL RESPONSES
+        # Returns MEAN scores for dual SAST
         judge_scores = judgeLM.score(adv_prompt_list, target_response_list)
         logger.debug("Finished getting judge scores.")
 
@@ -71,18 +75,19 @@ def main(args):
         ):
             logger.debug(
                 f"{i + 1}/{batchsize}\n\n[IMPROVEMENT]:\n{improv}\n\n"
-                f"[PROMPT]:\n{prompt}\n\n[RESPONSE]:\n{response}\n\n[SCORE]:\n{score}\n\n"
+                f"[PROMPT]:\n{prompt}\n\n[RESPONSE]:\n{response}\n\n"
+                f"[MEAN SCORE]:\n{score}\n\n"
             )
 
-        # WandB log values
-        wandb_logger.log(iteration, extracted_attack_list, target_response_list, judge_scores)
+        # WandB log values - PASS judgeLM for detailed logging
+        wandb_logger.log(iteration, extracted_attack_list, target_response_list, judge_scores, judgeLM=judgeLM)
 
         # Truncate conversation to avoid context length issues
         for i, conv in enumerate(convs_list):
             conv.messages = conv.messages[-2 * (args.keep_last_n):]
 
         # Early stopping criterion
-        # For dual SAST: check consensus
+        # For dual SAST: check consensus (both tools >= threshold)
         # For others: check if any score == 10
         if is_dual_sast:
             if judgeLM.check_consensus_success(judge_scores):
@@ -110,8 +115,8 @@ if __name__ == '__main__':
         "--attack-model",
         default = "vicuna-13b-v1.5",
         help = "Name of attacking model.",
-        choices=["vicuna-13b-v1.5", "llama-2-7b-chat-hf", "gpt-3.5-turbo-1106", "gpt-4-0125-preview", "claude-instant-1.2", "claude-2.1", "gemini-pro", 
-        "mixtral","vicuna-7b-v1.5", "sonar", "gpt-4.1-2025-04-14"]
+        choices=["vicuna-13b-v1.5", "llama-2-7b-chat-hf", "gpt-3.5-turbo-1106", "gpt-4-0125-preview", "claude-instant-1.2", "claude-2.1", "gemini-pro",
+        "mixtral","vicuna-7b-v1.5", "sonar", "gpt-4.1-2025-04-14", "gpt-5.2"]
     )
     parser.add_argument(
         "--attack-max-n-tokens",
@@ -132,7 +137,7 @@ if __name__ == '__main__':
         "--target-model",
         default = "vicuna-13b-v1.5", #TODO changed
         help = "Name of target model.",
-        choices=["vicuna-13b-v1.5", "llama-2-7b-chat-hf", "gpt-3.5-turbo-1106", "gpt-4-0125-preview", "claude-instant-1.2", "claude-2.1", "gemini-pro",]
+        choices=["vicuna-13b-v1.5", "llama-2-7b-chat-hf", "gpt-3.5-turbo-1106", "gpt-4-0125-preview", "claude-instant-1.2", "claude-2.1", "gemini-pro", "gpt-5.2"]
     )
     parser.add_argument(
         "--target-max-n-tokens",
@@ -190,7 +195,7 @@ if __name__ == '__main__':
         '--sast-primary',
         type=str,
         default='bandit',
-        choices=['bandit', 'semgrep'],
+        choices=['bandit', 'semgrep', 'codeql', 'sonarcloud'],
         help='Primary SAST tool for dual-sast judge'
     )
 
@@ -198,7 +203,7 @@ if __name__ == '__main__':
         '--sast-secondary',
         type=str,
         default='semgrep',
-        choices=['bandit', 'semgrep'],
+        choices=['bandit', 'semgrep', 'codeql', 'sonarcloud'],
         help='Secondary SAST tool for dual-sast judge'
     )
 

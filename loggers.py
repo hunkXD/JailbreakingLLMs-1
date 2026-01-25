@@ -1,6 +1,7 @@
 import wandb
 import pandas as pd
-import logging 
+import logging
+from EnhancedWandBLogger import get_judge_type, EnhancedWandBLogger
 
 def setup_logger():
     logger = logging.getLogger('PAIR')

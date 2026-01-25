@@ -1,0 +1,12 @@
+{"time":"2026-01-25T12:44:27.594931847+01:00","level":"INFO","msg":"stream: starting","core version":"0.24.0"}
+{"time":"2026-01-25T12:44:27.864232159+01:00","level":"INFO","msg":"stream: created new stream","id":"q1jdejap"}
+{"time":"2026-01-25T12:44:27.864487935+01:00","level":"INFO","msg":"handler: started","stream_id":"q1jdejap"}
+{"time":"2026-01-25T12:44:27.864710502+01:00","level":"INFO","msg":"stream: started","id":"q1jdejap"}
+{"time":"2026-01-25T12:44:27.864867968+01:00","level":"INFO","msg":"writer: started","stream_id":"q1jdejap"}
+{"time":"2026-01-25T12:44:27.864941205+01:00","level":"INFO","msg":"sender: started","stream_id":"q1jdejap"}
+{"time":"2026-01-25T12:44:48.564430769+01:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2026-01-25T12:44:49.520379922+01:00","level":"INFO","msg":"stream: closing","id":"q1jdejap"}
+{"time":"2026-01-25T12:44:49.520423243+01:00","level":"INFO","msg":"handler: closed","stream_id":"q1jdejap"}
+{"time":"2026-01-25T12:44:49.520509277+01:00","level":"INFO","msg":"sender: closed","stream_id":"q1jdejap"}
+{"time":"2026-01-25T12:44:49.520524398+01:00","level":"INFO","msg":"stream: closed","id":"q1jdejap"}
+{"time":"2026-01-25T12:44:49.520511843+01:00","level":"WARN","msg":"runwork: ignoring record after close","work":{"Work":{"Record":{"RecordType":{"Exit":{"exit_code":1}},"control":{"always_send":true}}},"TBHandler":{}}}
