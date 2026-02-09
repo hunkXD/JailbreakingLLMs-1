@@ -18,8 +18,12 @@ class Model(Enum):
     gpt_5_2 = "gpt-5.2"
     claude_1 = "claude-instant-1.2"
     claude_2 = "claude-2.1"
+    claude_3_5_sonnet = "claude-3-5-sonnet-20241022"
+    claude_opus = "claude-3-opus-20250219"
     gemini = "gemini-pro"
     mixtral = "mixtral"
+    sonar = "sonar-pro"
+    sonar_chat = "sonar"
 
 MODEL_NAMES = [model.value for model in Model]
 
@@ -43,10 +47,14 @@ FASTCHAT_TEMPLATE_NAMES: dict[Model, str] = {
     Model.gpt_5_2: "gpt-5.2",
     Model.claude_1: "claude-instant-1.2",
     Model.claude_2: "claude-2.1",
+    Model.claude_3_5_sonnet: "claude-3-5-sonnet-20241022",
+    Model.claude_opus: "claude-3-opus-20250219",
     Model.gemini: "gemini-pro",
     Model.vicuna: "vicuna_v1.1",
     Model.llama_2: "llama-2-7b-chat-hf",
     Model.mixtral: "mixtral",
+    Model.sonar: "sonar-pro",
+    Model.sonar_chat: "sonar",
 }
 
 API_KEY_NAMES: dict[Model, str] = {
@@ -56,10 +64,14 @@ API_KEY_NAMES: dict[Model, str] = {
     Model.gpt_5_2:  "OPENAI_API_KEY",
     Model.claude_1: "ANTHROPIC_API_KEY",
     Model.claude_2: "ANTHROPIC_API_KEY",
+    Model.claude_3_5_sonnet: "ANTHROPIC_API_KEY",
+    Model.claude_opus: "ANTHROPIC_API_KEY",
     Model.gemini:   "GOOGLE_API_KEY",
     Model.vicuna:   "TOGETHER_API_KEY",
     Model.llama_2:  "TOGETHER_API_KEY",
     Model.mixtral:  "TOGETHER_API_KEY",
+    Model.sonar:    "PERPLEXITYAI_API_KEY",
+    Model.sonar_chat: "PERPLEXITYAI_API_KEY",
 }
 
 LITELLM_TEMPLATES: dict[Model, dict] = {

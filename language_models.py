@@ -14,31 +14,62 @@ litellm.set_verbose = False
 warnings.filterwarnings('ignore', category=RuntimeWarning, message='.*invalid value encountered in scalar divide.*')
 
 
-class PerplexityModel:
-    """Perplexity AI model wrapper"""
+class LanguageModel():
+    def __init__(self, model_name):
+        self.model_name = Model(model_name)
 
-    def __init__(self, model_name='llama-3.1-sonar-large-128k-online', max_tokens=150, temperature=1.0):
-        self.model_name = model_name
-        self.max_tokens = max_tokens
-        self.temperature = temperature
+    def batched_generate(self, prompts_list: list, max_n_tokens: int, temperature: float):
+        """
+        Generates responses for a batch of prompts using a language model.
+        """
+        raise NotImplementedError
+
+
+class PerplexityModel(LanguageModel):
+    """Perplexity AI model wrapper - compatible with APILiteLLM interface"""
+
+    API_RETRY_SLEEP = 10
+    API_ERROR_OUTPUT = "ERROR: API CALL FAILED."
+    API_QUERY_SLEEP = 1
+    API_MAX_RETRY = 5
+    API_TIMEOUT = 20
+
+    def __init__(self, model_name='sonar-pro'):
+        # Initialize parent with model name
+        if isinstance(model_name, str):
+            try:
+                self.model_name = Model(model_name)
+            except ValueError:
+                # If it's not a standard Model enum value, use it as-is
+                self.model_name_str = model_name
+                self.model_name = None
+        else:
+            self.model_name = model_name
 
         # Get API key
-        import os
         self.api_key = os.environ.get('PERPLEXITYAI_API_KEY')
         if not self.api_key:
-            raise ValueError("PERPLEXITYAI_API_KEY not set")
+            raise ValueError("PERPLEXITYAI_API_KEY not set in environment")
 
         self.API_URL = "https://api.perplexity.ai/chat/completions"
+        self.use_open_source_model = False
+        self.eos_tokens = []
+        self.post_message = ""
 
-    def get_response(self, messages):
-        """Get response from Perplexity"""
+    def get_response(self, messages, max_tokens=150, temperature=1.0):
+        """Get single response from Perplexity"""
         import requests
 
-        # Format messages
+        # Format messages if needed
         if isinstance(messages, str):
             messages = [{"role": "user", "content": messages}]
-        elif isinstance(messages, list) and isinstance(messages[0], str):
+        elif isinstance(messages, list) and messages and isinstance(messages[0], str):
             messages = [{"role": "user", "content": msg} for msg in messages]
+
+        # Get actual model name
+        model_name = getattr(self, 'model_name_str', 'sonar-pro')
+        if self.model_name:
+            model_name = self.model_name.value
 
         response = requests.post(
             self.API_URL,
@@ -47,32 +78,80 @@ class PerplexityModel:
                 "Content-Type": "application/json"
             },
             json={
-                "model": self.model_name,
+                "model": model_name,
                 "messages": messages,
-                "max_tokens": self.max_tokens,
-                "temperature": self.temperature
-            }
+                "max_tokens": max_tokens,
+                "temperature": temperature
+            },
+            timeout=self.API_TIMEOUT
         )
 
         if response.status_code != 200:
-            raise Exception(f"Perplexity API error: {response.text}")
+            logger.error(f"Perplexity API error: {response.text}")
+            raise Exception(f"Perplexity API error: {response.status_code} - {response.text}")
 
         return response.json()["choices"][0]["message"]["content"]
 
-    def batched_generate(self, messages_list):
-        """Generate responses for multiple message lists"""
-        return [self.get_response(msgs) for msgs in messages_list]
+    def batched_generate(self, convs_list: list[list[dict]],
+                        max_n_tokens: int = 150,
+                        temperature: float = 1.0,
+                        top_p: float = 1.0,
+                        extra_eos_tokens: list[str] = None) -> list[str]:
+        """Generate responses for multiple conversations/prompts with retry logic"""
+        import requests
 
-class LanguageModel():
-    def __init__(self, model_name):
-        self.model_name = Model(model_name)
-    
-    def batched_generate(self, prompts_list: list, max_n_tokens: int, temperature: float):
-        """
-        Generates responses for a batch of prompts using a language model.
-        """
-        raise NotImplementedError
-    
+        # Get actual model name
+        model_name = getattr(self, 'model_name_str', 'sonar-pro')
+        if self.model_name:
+            model_name = self.model_name.value
+
+        responses = []
+
+        for attempt in range(self.API_MAX_RETRY):
+            try:
+                batch_responses = []
+                for conv_messages in convs_list:
+                    response = requests.post(
+                        self.API_URL,
+                        headers={
+                            "Authorization": f"Bearer {self.api_key}",
+                            "Content-Type": "application/json"
+                        },
+                        json={
+                            "model": model_name,
+                            "messages": conv_messages,
+                            "max_tokens": max_n_tokens,
+                            "temperature": temperature,
+                            "top_p": top_p
+                        },
+                        timeout=self.API_TIMEOUT
+                    )
+
+                    if response.status_code != 200:
+                        logger.error(f"Perplexity API error: {response.text}")
+                        batch_responses.append(self.API_ERROR_OUTPUT)
+                    else:
+                        try:
+                            content = response.json()["choices"][0]["message"]["content"]
+                            batch_responses.append(content)
+                        except (KeyError, IndexError) as e:
+                            logger.error(f"Failed to parse Perplexity response: {e}")
+                            batch_responses.append(self.API_ERROR_OUTPUT)
+
+                    # Rate limiting
+                    time.sleep(self.API_QUERY_SLEEP)
+
+                return batch_responses
+
+            except requests.exceptions.RequestException as e:
+                if attempt < self.API_MAX_RETRY - 1:
+                    wait_time = 2 ** attempt
+                    logger.warning(f"Perplexity API retry {attempt + 1}/{self.API_MAX_RETRY} in {wait_time}s: {e}")
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"Perplexity API failed after {self.API_MAX_RETRY} attempts")
+                    return [self.API_ERROR_OUTPUT] * len(convs_list)
+
 class APILiteLLM(LanguageModel):
     API_RETRY_SLEEP = 10
     API_ERROR_OUTPUT = "ERROR: API CALL FAILED."

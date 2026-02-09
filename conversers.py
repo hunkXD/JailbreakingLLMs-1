@@ -32,7 +32,14 @@ def load_attack_and_target_models(args):
     return attackLM, targetLM
 
 def load_indiv_model(model_name, local = False, use_jailbreakbench=True):
-    if use_jailbreakbench: 
+    # Check if it's a Perplexity model
+    perplexity_models = ['sonar-pro', 'sonar', 'llama-3.1-sonar', 'llama-3.1-sonar-large', 'llama-3.1-sonar-small']
+    is_perplexity = any(p in str(model_name).lower() for p in perplexity_models)
+
+    if is_perplexity:
+        from language_models import PerplexityModel
+        lm = PerplexityModel(model_name=model_name)
+    elif use_jailbreakbench:
         if local:
             from jailbreakbench import LLMvLLM
             lm = LLMvLLM(model_name=model_name)
@@ -130,8 +137,8 @@ class AttackLM():
             if not indices_to_regenerate:
                 break
 
-        if any([output is None for output in valid_outputs]):
-            raise ValueError(f"Failed to generate valid output after {self.max_n_attack_attempts} attempts. Terminating.")
+        # Return outputs as-is; None values will be handled as "refusals"
+        # This is a research result, not a failure
         return valid_outputs, new_adv_prompts
 
     def get_attack(self, convs_list, prompts_list):

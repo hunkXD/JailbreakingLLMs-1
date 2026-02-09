@@ -167,6 +167,12 @@ class EnhancedWandBLogger:
                 "sast/secondary_scores_iter": df["secondary_score"].tolist(),
             })
 
+            # Create detailed summary table with primary and secondary scores
+            summary_df = df[["prompt", "judge_scores", "primary_score", "secondary_score",
+                            "iter", "conv_num", "divergence", "has_code", "primary_vulns",
+                            "secondary_vulns", "primary_high", "secondary_high"]].copy()
+            log_data["sast/detailed_scores_table"] = wandb.Table(data=summary_df)
+
         self.logger.log(log_data)
         self.print_summary_stats(iteration)
 
