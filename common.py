@@ -17,16 +17,28 @@ def extract_json(s):
         dict: A dictionary containing the extracted values.
         str: The cleaned JSON string.
     """
-    # Extract the string that looks like a JSON
-    start_pos = s.find("{") 
-    end_pos = s.find("}") + 1  # +1 to include the closing brace
-    if end_pos == -1:
-        logger.error("Error extracting potential JSON structure")
-        logger.error(f"Input:\n {s}")
+    if not s or len(s) == 0:
+        logger.error("Error: Empty response from model")
         return None, None
 
+    # Extract the string that looks like a JSON
+    start_pos = s.find("{")
+    end_pos_raw = s.find("}")
+
+    if start_pos == -1 or end_pos_raw == -1:
+        logger.error("Error extracting potential JSON structure - no JSON delimiters found")
+        logger.error(f"Input:\n {s[:200]}")
+        return None, None
+
+    end_pos = end_pos_raw + 1  # +1 to include the closing brace
     json_str = s[start_pos:end_pos]
     json_str = json_str.replace("\n", "")  # Remove all line breaks
+
+    # Check if JSON is obviously incomplete (just closing brace)
+    if json_str == "}":
+        logger.error("Error: Response is incomplete (only closing brace)")
+        logger.error(f"Full response:\n {s[:200]}")
+        return None, None
 
     try:
         parsed = ast.literal_eval(json_str)
@@ -35,9 +47,10 @@ def extract_json(s):
             logger.error(f"Extracted:\n {json_str}")
             return None, None
         return parsed, json_str
-    except (SyntaxError, ValueError):
+    except (SyntaxError, ValueError) as e:
         logger.error("Error parsing extracted structure")
-        logger.error(f"Extracted:\n {json_str}")
+        logger.error(f"Error: {e}")
+        logger.error(f"Extracted:\n {json_str[:200]}")
         return None, None
 
 def get_init_msg(goal, target):

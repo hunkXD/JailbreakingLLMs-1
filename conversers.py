@@ -36,9 +36,16 @@ def load_indiv_model(model_name, local = False, use_jailbreakbench=True):
     perplexity_models = ['sonar-pro', 'sonar', 'llama-3.1-sonar', 'llama-3.1-sonar-large', 'llama-3.1-sonar-small']
     is_perplexity = any(p in str(model_name).lower() for p in perplexity_models)
 
+    # Check if it's a newer Gemini model not supported by JailbreakBench
+    new_gemini_models = ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3-flash', 'gemini-3-pro']
+    is_new_gemini = any(g in str(model_name).lower() for g in new_gemini_models)
+
     if is_perplexity:
         from language_models import PerplexityModel
         lm = PerplexityModel(model_name=model_name)
+    elif is_new_gemini:
+        # Use APILiteLLM for newer Gemini models not in JailbreakBench
+        lm = APILiteLLM(model_name)
     elif use_jailbreakbench:
         if local:
             from jailbreakbench import LLMvLLM
@@ -197,13 +204,17 @@ class TargetLM():
         self.category = category
 
     def get_response(self, prompts_list):
-        if self.use_jailbreakbench:
-            llm_response = self.model.query(prompts = prompts_list, 
-                                behavior = self.category, 
+        # Check if the model has JailbreakBench's query method
+        has_query_method = hasattr(self.model, 'query') and callable(getattr(self.model, 'query', None))
+
+        if self.use_jailbreakbench and has_query_method:
+            llm_response = self.model.query(prompts = prompts_list,
+                                behavior = self.category,
                                 phase = self.phase,
                                 max_new_tokens=self.max_n_tokens)
             responses = llm_response.responses
         else:
+            # Use batched_generate for APILiteLLM and PerplexityModel
             batchsize = len(prompts_list)
             convs_list = [conv_template(self.template) for _ in range(batchsize)]
             full_prompts = []
@@ -211,10 +222,10 @@ class TargetLM():
                 conv.append_message(conv.roles[0], prompt)
                 full_prompts.append(conv.to_openai_api_messages())
 
-            responses = self.model.batched_generate(full_prompts, 
-                                                            max_n_tokens = self.max_n_tokens,  
+            responses = self.model.batched_generate(full_prompts,
+                                                            max_n_tokens = self.max_n_tokens,
                                                             temperature = self.temperature,
                                                             top_p = self.top_p
                                                         )
-           
+
         return responses

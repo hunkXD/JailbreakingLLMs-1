@@ -21,6 +21,11 @@ class Model(Enum):
     claude_3_5_sonnet = "claude-3-5-sonnet-20241022"
     claude_opus = "claude-3-opus-20250219"
     gemini = "gemini-pro"
+    gemini_2_5_pro = "gemini-2.5-pro"
+    gemini_2_5_flash = "gemini-2.5-flash"
+    gemini_2_5_flash_lite = "gemini-2.5-flash-lite"
+    gemini_3_flash = "gemini-3-flash"
+    gemini_3_pro = "gemini-3-pro"
     mixtral = "mixtral"
     sonar = "sonar-pro"
     sonar_chat = "sonar"
@@ -50,6 +55,11 @@ FASTCHAT_TEMPLATE_NAMES: dict[Model, str] = {
     Model.claude_3_5_sonnet: "claude-3-5-sonnet-20241022",
     Model.claude_opus: "claude-3-opus-20250219",
     Model.gemini: "gemini-pro",
+    Model.gemini_2_5_pro: "gemini-2.5-pro",
+    Model.gemini_2_5_flash: "gemini-2.5-flash",
+    Model.gemini_2_5_flash_lite: "gemini-2.5-flash-lite",
+    Model.gemini_3_flash: "gemini-3-flash",
+    Model.gemini_3_pro: "gemini-3-pro",
     Model.vicuna: "vicuna_v1.1",
     Model.llama_2: "llama-2-7b-chat-hf",
     Model.mixtral: "mixtral",
@@ -67,6 +77,11 @@ API_KEY_NAMES: dict[Model, str] = {
     Model.claude_3_5_sonnet: "ANTHROPIC_API_KEY",
     Model.claude_opus: "ANTHROPIC_API_KEY",
     Model.gemini:   "GOOGLE_API_KEY",
+    Model.gemini_2_5_pro: "GOOGLE_API_KEY",
+    Model.gemini_2_5_flash: "GOOGLE_API_KEY",
+    Model.gemini_2_5_flash_lite: "GOOGLE_API_KEY",
+    Model.gemini_3_flash: "GOOGLE_API_KEY",
+    Model.gemini_3_pro: "GOOGLE_API_KEY",
     Model.vicuna:   "TOGETHER_API_KEY",
     Model.llama_2:  "TOGETHER_API_KEY",
     Model.mixtral:  "TOGETHER_API_KEY",
