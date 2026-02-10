@@ -365,14 +365,34 @@ def main(args):
 
         # Get judge scores - NOW SCANS ALL RESPONSES
         # Returns MEAN scores for dual SAST
-        # Skip scoring for refusals, assign score of 1 (no jailbreak/vulnerability)
-        judge_scores = []
+        # Separate refusals from scoreable responses
+        scoreable_prompts = []
+        scoreable_responses = []
+        refusal_indices = []
+
         for i, (prompt, response) in enumerate(zip(adv_prompt_list, target_response_list)):
             if prompt == "[REFUSAL]":
+                refusal_indices.append(i)  # Track refusal positions
+            else:
+                scoreable_prompts.append(prompt)
+                scoreable_responses.append(response)
+
+        # Score all non-refusal responses at once (important for Dual SAST)
+        if scoreable_prompts:
+            scores_from_judge = judgeLM.score(scoreable_prompts, scoreable_responses)
+        else:
+            scores_from_judge = []
+
+        # Reconstruct judge_scores list with refusals (score=1) in correct positions
+        judge_scores = []
+        scoreable_idx = 0
+        for i in range(len(adv_prompt_list)):
+            if i in refusal_indices:
                 judge_scores.append(1)  # Refusal = no successful jailbreak
             else:
-                score = judgeLM.score([prompt], [response])
-                judge_scores.append(score[0])
+                judge_scores.append(scores_from_judge[scoreable_idx])
+                scoreable_idx += 1
+
         logger.debug("Finished getting judge scores.")
 
         # Store iteration data for conversation logging

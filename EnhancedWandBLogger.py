@@ -98,25 +98,48 @@ class EnhancedWandBLogger:
         if self.is_dual_sast and judgeLM and hasattr(judgeLM, 'get_detailed_scores'):
             detailed = judgeLM.get_detailed_scores()
 
-            df["primary_score"] = detailed['primary_scores']
-            df["secondary_score"] = detailed['secondary_scores']
-            df["has_code"] = [d.get('has_code', False) for d in detailed['details']]  # GEÄNDERT
-            df["code_length"] = [d.get('code_length', 0) for d in detailed['details']]  # GEÄNDERT
-            df["divergence"] = [d.get('divergence', 0) for d in detailed['details']]  # GEÄNDERT
-            df["primary_vulns"] = [d.get('primary_vulns', 0) for d in detailed['details']]
-            df["secondary_vulns"] = [d.get('secondary_vulns', 0) for d in detailed['details']]
-            df["primary_high"] = [d.get('primary_high', 0) for d in detailed['details']]  # NEU
-            df["secondary_high"] = [d.get('secondary_high', 0) for d in detailed['details']]  # NEU
-            df["primary_target_cwe"] = [d.get('primary_target_cwe', False) for d in detailed['details']]  # NEU
-            df["secondary_target_cwe"] = [d.get('secondary_target_cwe', False) for d in detailed['details']]  # NEU
+            # Validate that detailed scores match number of responses
+            num_responses = len(response_list)
+            num_detailed = len(detailed['primary_scores'])
 
-            # Update stats
-            self.sast_stats['total_code_responses'] += sum(df["has_code"])
-            self.sast_stats['total_no_code_responses'] += sum(~df["has_code"])
-            self.sast_stats['divergence_count'] += sum(df["divergence"] > 2)
-            self.sast_stats['primary_scores'].extend(detailed['primary_scores'])
-            self.sast_stats['secondary_scores'].extend(detailed['secondary_scores'])
-            self.sast_stats['mean_scores'].extend(judge_scores)
+            if num_detailed == num_responses:
+                # All responses have detailed scores - use them
+                df["primary_score"] = detailed['primary_scores']
+                df["secondary_score"] = detailed['secondary_scores']
+                df["has_code"] = [d.get('has_code', False) for d in detailed['details']]
+                df["code_length"] = [d.get('code_length', 0) for d in detailed['details']]
+                df["divergence"] = [d.get('divergence', 0) for d in detailed['details']]
+                df["primary_vulns"] = [d.get('primary_vulns', 0) for d in detailed['details']]
+                df["secondary_vulns"] = [d.get('secondary_vulns', 0) for d in detailed['details']]
+                df["primary_high"] = [d.get('primary_high', 0) for d in detailed['details']]
+                df["secondary_high"] = [d.get('secondary_high', 0) for d in detailed['details']]
+                df["primary_target_cwe"] = [d.get('primary_target_cwe', False) for d in detailed['details']]
+                df["secondary_target_cwe"] = [d.get('secondary_target_cwe', False) for d in detailed['details']]
+
+                # Update stats
+                self.sast_stats['total_code_responses'] += sum(df["has_code"])
+                self.sast_stats['total_no_code_responses'] += sum(~df["has_code"])
+                self.sast_stats['divergence_count'] += sum(df["divergence"] > 2)
+                self.sast_stats['primary_scores'].extend(detailed['primary_scores'])
+                self.sast_stats['secondary_scores'].extend(detailed['secondary_scores'])
+                self.sast_stats['mean_scores'].extend(judge_scores)
+            else:
+                # Mismatch: use judge_scores as fallback for primary/secondary
+                print(f"⚠️  WARNING: Detailed scores mismatch ({num_detailed} detailed vs {num_responses} responses)")
+                print(f"   Using judge_scores as primary scores")
+                df["primary_score"] = judge_scores
+                df["secondary_score"] = judge_scores
+                df["has_code"] = False
+                df["code_length"] = 0
+                df["divergence"] = 0
+                df["primary_vulns"] = 0
+                df["secondary_vulns"] = 0
+                df["primary_high"] = 0
+                df["secondary_high"] = 0
+                df["primary_target_cwe"] = False
+                df["secondary_target_cwe"] = False
+
+                self.sast_stats['mean_scores'].extend(judge_scores)
 
         self.table = pd.concat([self.table, df])
 
