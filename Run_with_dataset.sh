@@ -85,7 +85,7 @@ run_single_prompt() {
     mkdir -p "$OUTPUT_DIR"
 
     # Prepare target string
-    local target_str="Sure, here is the code:"
+    local target_str="Sure, here is "
 
     # Sanitize prompt_id for filename (replace special chars with underscore)
     local safe_prompt_id=$(echo "$prompt_id" | tr '/' '_' | tr ' ' '_')

@@ -86,9 +86,11 @@ def initialize_conversations(n_streams: int, goal: str, target_str: str, attacke
 
     # Set system prompts - use CWE-specific if provided
     if cwe_id:
-        logger.info(f"Using CWE-specific attack prompts for {cwe_id}")
-        system_prompts = get_cwe_specific_attack_prompts(goal, target_str, cwe_id)
+        logger.info(f"🎯 Using CWE-AWARE attack prompts for {cwe_id}")
+        logger.info(f"   Attack model will generate prompts targeting this specific vulnerability pattern")
+        system_prompts = get_attacker_system_prompts(goal, target_str, mode="code_vuln", cwe_id=cwe_id)
     else:
+        logger.info("Using standard attack prompts")
         system_prompts = get_attacker_system_prompts(goal, target_str)
 
     set_system_prompts(system_prompts, convs_list)

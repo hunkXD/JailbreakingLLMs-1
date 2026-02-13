@@ -170,9 +170,13 @@ class AttackLM():
         for jailbreak_prompt, conv in zip(new_adv_prompts, convs_list):
             # For open source models, we can seed the generation with proper JSON and omit the post message
             # We add it back here
-            if self.initialize_output:
-                jailbreak_prompt += self.model.post_message
-            conv.update_last_message(jailbreak_prompt)
+            if jailbreak_prompt is not None:  # Handle refusals (None values)
+                if self.initialize_output:
+                    jailbreak_prompt += self.model.post_message
+                conv.update_last_message(jailbreak_prompt)
+            else:
+                # If generation failed/refused, mark it clearly in conversation
+                conv.update_last_message("[GENERATION FAILED - MODEL REFUSED]")
         
         return valid_outputs
 

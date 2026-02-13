@@ -10,6 +10,7 @@ import os
 import time
 import weave
 import json
+import re
 from datetime import datetime
 
 def memory_usage_psutil():
@@ -17,6 +18,42 @@ def memory_usage_psutil():
     process = psutil.Process(os.getpid())
     mem = process.memory_info().rss / float(2 ** 20)  # bytes to MB
     return mem
+
+
+def correct_improvement_scores(improvements, actual_scores):
+    """
+    Replace claimed scores in improvement text with actual judge scores.
+
+    Args:
+        improvements: List of improvement strings from attack model
+        actual_scores: List of actual judge scores
+
+    Returns:
+        List of corrected improvement strings
+    """
+    corrected = []
+
+    for improvement, actual_score in zip(improvements, actual_scores):
+        if improvement is None or improvement == "Model refused to generate prompts":
+            corrected.append(improvement)
+            continue
+
+        # Replace "Score X:" pattern with actual score
+        # Pattern matches: "Score 1:", "Score 10:", etc.
+        corrected_text = re.sub(
+            r'Score\s+\d+:',
+            f'Score {actual_score}:',
+            improvement,
+            count=1
+        )
+
+        # If no pattern found, prepend the actual score
+        if corrected_text == improvement and not improvement.startswith('Score'):
+            corrected_text = f'Score {actual_score}: {improvement}'
+
+        corrected.append(corrected_text)
+
+    return corrected
 
 
 def print_success_celebration(mode="standard"):
@@ -147,9 +184,18 @@ def save_stream_conversations(convs_list, system_prompts, extracted_attack_list_
                 response = target_responses_per_iter[iter_num][stream_idx]
                 score = scores_per_iter[iter_num][stream_idx]
 
+                # Handle None/refusal cases
+                if attack_dict is not None:
+                    improvement = attack_dict.get('improvement', '')
+                    prompt = attack_dict.get('prompt', '')
+                else:
+                    # Attack model refused - mark clearly in logs
+                    improvement = '[ATTACK MODEL REFUSAL]'
+                    prompt = '[NO PROMPT - ATTACK MODEL REFUSED]'
+
                 iteration_data.append({
-                    'improvement': attack_dict.get('improvement', ''),
-                    'prompt': attack_dict.get('prompt', ''),
+                    'improvement': improvement,
+                    'prompt': prompt,
                     'response': response,
                     'score': score
                 })
@@ -395,6 +441,14 @@ def main(args):
 
         logger.debug("Finished getting judge scores.")
 
+        # ✅ CORRECT: Replace claimed scores in improvements with actual judge scores
+        improv_list = correct_improvement_scores(improv_list, judge_scores)
+
+        # Update extracted_attack_list with corrected improvements
+        for i, (attack, corrected_improv) in enumerate(zip(extracted_attack_list, improv_list)):
+            if attack is not None:
+                attack['improvement'] = corrected_improv
+
         # Store iteration data for conversation logging
         extracted_attack_list_per_iter.append(extracted_attack_list)
         target_responses_per_iter.append(target_response_list)
@@ -498,7 +552,8 @@ if __name__ == '__main__':
         default = "vicuna-13b-v1.5",
         help = "Name of attacking model.",
         choices=["vicuna-13b-v1.5", "llama-2-7b-chat-hf", "gpt-3.5-turbo-1106", "gpt-4-0125-preview", "claude-instant-1.2", "claude-2.1",
-                 "claude-3-5-sonnet-20241022", "claude-3-opus-20250219", "gemini-pro",
+                 "claude-3-5-sonnet-20241022", "claude-3-opus-20250219", "gemini-pro", "gemini-2.5-pro", "gemini-2.5-flash",
+                 "gemini-2.5-flash-lite", "gemini-3-flash", "gemini-3-pro",
                  "mixtral","vicuna-7b-v1.5", "sonar", "gpt-4.1-2025-04-14", "gpt-5.2", "sonar-pro"]
     )
     parser.add_argument(
@@ -520,7 +575,9 @@ if __name__ == '__main__':
         "--target-model",
         default = "vicuna-13b-v1.5", #TODO changed
         help = "Name of target model.",
-        choices=["vicuna-13b-v1.5", "llama-2-7b-chat-hf", "gpt-3.5-turbo-1106", "gpt-4-0125-preview", "claude-instant-1.2", "claude-2.1", "gemini-pro", "gpt-5.2", "sonar-pro", "sonar"]
+        choices=["vicuna-13b-v1.5", "llama-2-7b-chat-hf", "gpt-3.5-turbo-1106", "gpt-4-0125-preview", "claude-instant-1.2", "claude-2.1",
+                 "gemini-pro", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3-flash", "gemini-3-pro",
+                 "gpt-5.2", "sonar-pro", "sonar"]
     )
     parser.add_argument(
         "--target-max-n-tokens",
