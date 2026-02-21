@@ -21,24 +21,47 @@ def extract_json(s):
         logger.error("Error: Empty response from model")
         return None, None
 
-    # Extract the string that looks like a JSON
+    # Find the opening brace
     start_pos = s.find("{")
-    end_pos_raw = s.find("}")
-
-    if start_pos == -1 or end_pos_raw == -1:
+    if start_pos == -1:
         logger.error("Error extracting potential JSON structure - no JSON delimiters found")
         logger.error(f"Input:\n {s[:200]}")
         return None, None
 
-    end_pos = end_pos_raw + 1  # +1 to include the closing brace
-    json_str = s[start_pos:end_pos]
-    json_str = json_str.replace("\n", "")  # Remove all line breaks
+    # Walk forward counting brace depth to find the matching closing brace.
+    # s.find("}") would stop at the first "}" inside a string value (e.g. code
+    # blocks in "improvement"), producing a truncated and unparseable snippet.
+    depth = 0
+    in_string = False
+    escape_next = False
+    end_pos = -1
+    for i, ch in enumerate(s[start_pos:], start_pos):
+        if escape_next:
+            escape_next = False
+            continue
+        if ch == '\\' and in_string:
+            escape_next = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == '{':
+            depth += 1
+        elif ch == '}':
+            depth -= 1
+            if depth == 0:
+                end_pos = i
+                break
 
-    # Check if JSON is obviously incomplete (just closing brace)
-    if json_str == "}":
-        logger.error("Error: Response is incomplete (only closing brace)")
-        logger.error(f"Full response:\n {s[:200]}")
+    if end_pos == -1:
+        logger.error("Error extracting potential JSON structure - no matching closing brace found")
+        logger.error(f"Input:\n {s[:200]}")
         return None, None
+
+    json_str = s[start_pos:end_pos + 1]
+    json_str = json_str.replace("\n", "")  # Remove all line breaks
 
     try:
         parsed = ast.literal_eval(json_str)
