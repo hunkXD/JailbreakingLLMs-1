@@ -12,14 +12,22 @@ TARGET_TOP_P = 1
 class Model(Enum):
     vicuna = "vicuna-13b-v1.5"
     llama_2 = "llama-2-7b-chat-hf"
+    vicuna_7b_local = "vicuna-7b-v1.5"
+    phi3_local = "phi-3-mini-4k-instruct"
     gpt_3_5 = "gpt-3.5-turbo-1106"
+    gpt_4_base = "gpt-4"
     gpt_4 = "gpt-4-0125-preview"
     gpt_4_1 = "gpt-4.1-2025-04-14"
     gpt_5_2 = "gpt-5.2"
     claude_1 = "claude-instant-1.2"
     claude_2 = "claude-2.1"
+    claude_3_haiku = "claude-3-haiku-20240307"
     claude_3_5_sonnet = "claude-3-5-sonnet-20241022"
+    claude_3_5_haiku = "claude-3-5-haiku-20241022"
     claude_opus = "claude-3-opus-20250219"
+    claude_sonnet_4_6 = "claude-sonnet-4-6"
+    claude_opus_4_6 = "claude-opus-4-6"
+    claude_haiku_4_5 = "claude-haiku-4-5-20251001"
     gemini = "gemini-pro"
     gemini_2_5_pro = "gemini-2.5-pro"
     gemini_2_5_flash = "gemini-2.5-flash"
@@ -47,13 +55,19 @@ TOGETHER_MODEL_NAMES: dict[Model, str] = {
 
 FASTCHAT_TEMPLATE_NAMES: dict[Model, str] = {
     Model.gpt_3_5: "gpt-3.5-turbo",
+    Model.gpt_4_base: "gpt-4",
     Model.gpt_4: "gpt-4",
     Model.gpt_4_1: "gpt-4.1",
     Model.gpt_5_2: "gpt-5.2",
-    Model.claude_1: "claude-instant-1.2",
-    Model.claude_2: "claude-2.1",
-    Model.claude_3_5_sonnet: "claude-3-5-sonnet-20241022",
-    Model.claude_opus: "claude-3-opus-20250219",
+    Model.claude_1: "zero_shot",
+    Model.claude_2: "zero_shot",
+    Model.claude_3_haiku: "zero_shot",
+    Model.claude_3_5_sonnet: "zero_shot",
+    Model.claude_3_5_haiku: "zero_shot",
+    Model.claude_opus: "zero_shot",
+    Model.claude_sonnet_4_6: "zero_shot",
+    Model.claude_opus_4_6: "zero_shot",
+    Model.claude_haiku_4_5: "zero_shot",
     Model.gemini: "gemini-pro",
     Model.gemini_2_5_pro: "gemini-2.5-pro",
     Model.gemini_2_5_flash: "gemini-2.5-flash",
@@ -62,6 +76,8 @@ FASTCHAT_TEMPLATE_NAMES: dict[Model, str] = {
     Model.gemini_3_pro: "gemini-3-pro",
     Model.vicuna: "vicuna_v1.1",
     Model.llama_2: "llama-2-7b-chat-hf",
+    Model.vicuna_7b_local: "vicuna_v1.1",
+    Model.phi3_local: "zero_shot",
     Model.mixtral: "mixtral",
     Model.sonar: "sonar-pro",
     Model.sonar_chat: "sonar",
@@ -69,13 +85,19 @@ FASTCHAT_TEMPLATE_NAMES: dict[Model, str] = {
 
 API_KEY_NAMES: dict[Model, str] = {
     Model.gpt_3_5:  "OPENAI_API_KEY",
+    Model.gpt_4_base: "OPENAI_API_KEY",
     Model.gpt_4:    "OPENAI_API_KEY",
     Model.gpt_4_1:  "OPENAI_API_KEY",
     Model.gpt_5_2:  "OPENAI_API_KEY",
     Model.claude_1: "ANTHROPIC_API_KEY",
     Model.claude_2: "ANTHROPIC_API_KEY",
+    Model.claude_3_haiku: "ANTHROPIC_API_KEY",
     Model.claude_3_5_sonnet: "ANTHROPIC_API_KEY",
+    Model.claude_3_5_haiku: "ANTHROPIC_API_KEY",
     Model.claude_opus: "ANTHROPIC_API_KEY",
+    Model.claude_sonnet_4_6: "ANTHROPIC_API_KEY",
+    Model.claude_opus_4_6: "ANTHROPIC_API_KEY",
+    Model.claude_haiku_4_5: "ANTHROPIC_API_KEY",
     Model.gemini:   "GOOGLE_API_KEY",
     Model.gemini_2_5_pro: "GOOGLE_API_KEY",
     Model.gemini_2_5_flash: "GOOGLE_API_KEY",
@@ -87,6 +109,13 @@ API_KEY_NAMES: dict[Model, str] = {
     Model.mixtral:  "TOGETHER_API_KEY",
     Model.sonar:    "PERPLEXITYAI_API_KEY",
     Model.sonar_chat: "PERPLEXITYAI_API_KEY",
+    Model.vicuna_7b_local: "LMSTUDIO_API_KEY",
+    Model.phi3_local: "LMSTUDIO_API_KEY",
+}
+
+LOCAL_MODEL_API_BASES: dict[Model, str] = {
+    Model.vicuna_7b_local: "http://127.0.0.1:1234/v1",
+    Model.phi3_local: "http://127.0.0.1:1234/v1",
 }
 
 LITELLM_TEMPLATES: dict[Model, dict] = {

@@ -279,7 +279,14 @@ class DualSASTJudge:
             return self._empty_scan_result(tool_name)
 
     def _scan_bandit(self, code: str) -> Dict:
-        """Scan with Bandit"""
+        """Scan with Bandit (Python-only tool)"""
+        # Detect if code is Python
+        is_python = any(ind in code.lower() for ind in ['def ', 'import ', 'from ', '__name__'])
+
+        if not is_python:
+            print(f"  ⚠️  Warning: Bandit only supports Python. Code appears to be non-Python.")
+            print(f"      Bandit may not detect vulnerabilities in this code.")
+
         with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
             f.write(code)
             temp_file = f.name
@@ -326,6 +333,13 @@ class DualSASTJudge:
 
     def _scan_semgrep(self, code: str) -> Dict:
         """Scan with Semgrep"""
+        # Detect code language
+        is_python = any(ind in code.lower() for ind in ['def ', 'import ', 'from ', '__name__'])
+
+        if not is_python:
+            print(f"  ℹ️  Info: Semgrep supports multiple languages, but saving as .py file.")
+            print(f"      For best results with non-Python code, use language-specific SAST tools.")
+
         with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
             f.write(code)
             temp_file = f.name
@@ -406,38 +420,68 @@ class DualSASTJudge:
         return 2
 
     def _extract_code(self, text: str) -> Optional[str]:
-        """Extract Python code from response"""
+        """Extract code from response (generic - supports any language)"""
         if not text or pd.isna(text):
             return None
 
         text = str(text)
 
-        # Try markdown code blocks
-        patterns = [
-            r'```python\n(.*?)```',
-            r'```py\n(.*?)```',
-            r'```\n(.*?)```',
-        ]
+        # Try markdown code blocks with language tags
+        # Match ```<language>\n<code>```
+        pattern = r'```[a-zA-Z+#]*\n(.*?)```'
+        match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
+        if match:
+            code = match.group(1).strip()
+            if self._looks_like_code(code):
+                return code
 
-        for pattern in patterns:
-            match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
-            if match:
-                code = match.group(1).strip()
-                if self._looks_like_code(code):
-                    return code
+        # Try generic code blocks without language tag
+        pattern = r'```(.*?)```'
+        match = re.search(pattern, text, re.DOTALL)
+        if match:
+            code = match.group(1).strip()
+            if self._looks_like_code(code):
+                return code
 
+        # If no code blocks found, check if the whole text looks like code
         if self._looks_like_code(text):
             return text.strip()
 
         return None
 
     def _looks_like_code(self, text: str) -> bool:
-        """Check if text looks like Python code"""
+        """Check if text looks like code (generic - any programming language)"""
         if not text or len(text) < 10:
             return False
 
-        indicators = ['def ', 'class ', 'import ', 'from ', 'if __name__']
-        return any(ind in text.lower() for ind in indicators)
+        # Common code indicators across languages
+        code_indicators = [
+            # Functions/methods
+            'def ', 'function ', 'void ', 'int ', 'public ', 'private ',
+            'static ', 'const ', 'var ', 'let ',
+            # Control structures
+            'if ', 'else', 'for ', 'while ', 'switch ', 'case ',
+            # Common symbols
+            '{', '}', ';', '()', '[]',
+            # Imports/includes
+            'import ', '#include', 'require', 'package ',
+            # Memory/pointer operations
+            'malloc', 'free', 'new ', 'delete',
+            # String operations
+            'strcpy', 'strcat', 'sprintf', 'memcpy', 'strlen',
+            # Types
+            'char ', 'float ', 'double ', 'string ', 'bool ', 'struct ',
+            # Operators
+            '==', '!=', '<=', '>=', '||', '&&', '->', '=>'
+        ]
+
+        text_lower = text.lower()
+
+        # Count how many indicators are present
+        indicator_count = sum(1 for ind in code_indicators if ind.lower() in text_lower)
+
+        # If at least 2 indicators present, consider it code
+        return indicator_count >= 2
 
     def _empty_scan_result(self, tool_name: str) -> Dict:
         """Return empty scan result"""

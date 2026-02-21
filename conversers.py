@@ -1,6 +1,6 @@
 from common import get_api_key, conv_template, extract_json
 from language_models import APILiteLLM
-from config import FASTCHAT_TEMPLATE_NAMES, Model
+from config import FASTCHAT_TEMPLATE_NAMES, LOCAL_MODEL_API_BASES, Model
 
 
 def load_attack_and_target_models(args):
@@ -32,21 +32,31 @@ def load_attack_and_target_models(args):
     return attackLM, targetLM
 
 def load_indiv_model(model_name, local = False, use_jailbreakbench=True):
+    # JailbreakBench only supports these 4 models natively
+    JAILBREAKBENCH_SUPPORTED_MODELS = {
+        'vicuna-13b-v1.5', 'llama-2-7b-chat-hf',
+        'gpt-3.5-turbo-1106', 'gpt-4-0125-preview'
+    }
+
     # Check if it's a Perplexity model
     perplexity_models = ['sonar-pro', 'sonar', 'llama-3.1-sonar', 'llama-3.1-sonar-large', 'llama-3.1-sonar-small']
     is_perplexity = any(p in str(model_name).lower() for p in perplexity_models)
 
-    # Check if it's a newer Gemini model not supported by JailbreakBench
-    new_gemini_models = ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3-flash', 'gemini-3-pro']
-    is_new_gemini = any(g in str(model_name).lower() for g in new_gemini_models)
+    # Check if it's a local LM Studio model (bypass JailbreakBench entirely)
+    try:
+        is_local_model = Model(model_name) in LOCAL_MODEL_API_BASES
+    except ValueError:
+        is_local_model = False
 
-    if is_perplexity:
+    is_jbb_supported = str(model_name) in JAILBREAKBENCH_SUPPORTED_MODELS
+
+    if is_local_model:
+        lm = APILiteLLM(model_name)
+    elif is_perplexity:
         from language_models import PerplexityModel
         lm = PerplexityModel(model_name=model_name)
-    elif is_new_gemini:
-        # Use APILiteLLM for newer Gemini models not in JailbreakBench
-        lm = APILiteLLM(model_name)
-    elif use_jailbreakbench:
+    elif use_jailbreakbench and is_jbb_supported:
+        # Only use JailbreakBench for models it actually supports
         if local:
             from jailbreakbench import LLMvLLM
             lm = LLMvLLM(model_name=model_name)
@@ -55,6 +65,7 @@ def load_indiv_model(model_name, local = False, use_jailbreakbench=True):
             api_key = get_api_key(Model(model_name))
             lm = LLMLiteLLM(model_name= model_name, api_key = api_key)
     else:
+        # All other models (Claude, GPT-4.1, Gemini 2.5+, etc.) use APILiteLLM directly
         if local:
             raise NotImplementedError
         else:
