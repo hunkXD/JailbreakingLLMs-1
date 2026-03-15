@@ -37,6 +37,14 @@ class Model(Enum):
     mixtral = "mixtral"
     sonar = "sonar-pro"
     sonar_chat = "sonar"
+    # NVIDIA NIM Models (Free tier: 1,000 calls/day)
+    nvidia_llama3_8b = "nvidia-llama3-8b-instruct"
+    nvidia_llama3_70b = "nvidia-llama3-70b-instruct"
+    nvidia_codellama_70b = "nvidia-codellama-70b"
+    nvidia_phi3_mini = "nvidia-phi-3-mini-4k-instruct"
+    nvidia_mistral_7b = "nvidia-mistral-7b-instruct"
+    nvidia_mixtral_8x7b = "nvidia-mixtral-8x7b-instruct"
+    nvidia_nemotron_340b = "nvidia-nemotron-4-340b-instruct"
 
 MODEL_NAMES = [model.value for model in Model]
 
@@ -51,6 +59,16 @@ TOGETHER_MODEL_NAMES: dict[Model, str] = {
     Model.llama_2: "together_ai/togethercomputer/llama-2-7b-chat",
     Model.vicuna: "together_ai/lmsys/vicuna-13b-v1.5",
     Model.mixtral: "together_ai/mistralai/Mixtral-8x7B-Instruct-v0.1"
+}
+
+NVIDIA_MODEL_NAMES: dict[Model, str] = {
+    Model.nvidia_llama3_8b: "nvidia_nim/meta/llama3-8b-instruct",
+    Model.nvidia_llama3_70b: "nvidia_nim/meta/llama3-70b-instruct",
+    Model.nvidia_codellama_70b: "nvidia_nim/meta/codellama-70b",
+    Model.nvidia_phi3_mini: "nvidia_nim/microsoft/phi-3-mini-4k-instruct",
+    Model.nvidia_mistral_7b: "nvidia_nim/mistralai/mistral-7b-instruct",
+    Model.nvidia_mixtral_8x7b: "nvidia_nim/mistralai/mixtral-8x7b-instruct",
+    Model.nvidia_nemotron_340b: "nvidia_nim/nvidia/nemotron-4-340b-instruct",
 }
 
 FASTCHAT_TEMPLATE_NAMES: dict[Model, str] = {
@@ -81,6 +99,14 @@ FASTCHAT_TEMPLATE_NAMES: dict[Model, str] = {
     Model.mixtral: "mixtral",
     Model.sonar: "sonar-pro",
     Model.sonar_chat: "sonar",
+    # NVIDIA NIM Models
+    Model.nvidia_llama3_8b: "llama-3",
+    Model.nvidia_llama3_70b: "llama-3",
+    Model.nvidia_codellama_70b: "codellama",
+    Model.nvidia_phi3_mini: "phi-3",
+    Model.nvidia_mistral_7b: "mistral",
+    Model.nvidia_mixtral_8x7b: "mixtral",
+    Model.nvidia_nemotron_340b: "zero_shot",
 }
 
 API_KEY_NAMES: dict[Model, str] = {
@@ -111,6 +137,14 @@ API_KEY_NAMES: dict[Model, str] = {
     Model.sonar_chat: "PERPLEXITYAI_API_KEY",
     Model.vicuna_7b_local: "LMSTUDIO_API_KEY",
     Model.phi3_local: "LMSTUDIO_API_KEY",
+    # NVIDIA NIM Models - all use the same API key
+    Model.nvidia_llama3_8b: "NVIDIA_NIM_API_KEY",
+    Model.nvidia_llama3_70b: "NVIDIA_NIM_API_KEY",
+    Model.nvidia_codellama_70b: "NVIDIA_NIM_API_KEY",
+    Model.nvidia_phi3_mini: "NVIDIA_NIM_API_KEY",
+    Model.nvidia_mistral_7b: "NVIDIA_NIM_API_KEY",
+    Model.nvidia_mixtral_8x7b: "NVIDIA_NIM_API_KEY",
+    Model.nvidia_nemotron_340b: "NVIDIA_NIM_API_KEY",
 }
 
 LOCAL_MODEL_API_BASES: dict[Model, str] = {
