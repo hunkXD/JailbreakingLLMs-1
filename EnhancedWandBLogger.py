@@ -118,7 +118,7 @@ class EnhancedWandBLogger:
                     self.tool_scores['semgrep'].extend(semgrep_scores)
 
                 # LLM scores
-                llm_scores = [d.get('llm_score', 1) for d in details_list]
+                llm_scores = [d.get('llm_score') or 1 for d in details_list]
                 df["llm_score"] = llm_scores
 
                 # Effective / combined scores

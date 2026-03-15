@@ -147,6 +147,11 @@ ITERATION DETAILS:
         if claimed is not None:
             score_trace = f"\n[SCORE TRACE]: Claimed={claimed}, Actual Judge={actual}\n"
 
+        llm_fb = data.get('llm_fallback_used', False)
+        llm_fb_note = ""
+        if llm_fb:
+            llm_fb_note = f"\n[LLM FALLBACK USED]: LLM score={data.get('llm_score', 'N/A')}\n"
+
         formatted += f"""
 {'='*80}
 ITERATION {iteration_num}
@@ -154,7 +159,7 @@ ITERATION {iteration_num}
 
 [IMPROVEMENT]:
 {data.get('improvement', 'N/A')}
-{score_trace}
+{score_trace}{llm_fb_note}
 [ATTACK PROMPT]:
 {data.get('prompt', 'N/A')}
 
@@ -220,6 +225,8 @@ def save_stream_conversations(convs_list, system_prompts, extracted_attack_list_
                     'response': response,
                     'score': score,
                     'claimed_score': attack_dict.get('claimed_score') if attack_dict is not None else None,
+                    'llm_fallback_used': attack_dict.get('llm_fallback_used', False) if attack_dict is not None else False,
+                    'llm_score': attack_dict.get('llm_score') if attack_dict is not None else None,
                 })
 
         # Get system prompt for this stream (round-robin)
@@ -352,6 +359,7 @@ def log_iteration_json(iteration, extracted_attack_list, target_response_list,
                 "semgrep_score":    d.get("semgrep_score"),
                 "combined_score":   d.get("combined_score"),
                 "llm_score":        d.get("llm_score"),
+                "llm_fallback_used": d.get("llm_fallback_used"),
                 "effective_score":  d.get("effective_score"),
                 "language":         d.get("language"),
                 "target_cwe_found": d.get("target_cwe_found"),
@@ -562,6 +570,13 @@ def main(args):
             if attack is not None:
                 attack['improvement'] = corrected_improv
                 attack['claimed_score'] = claimed
+
+        # Capture judge details (llm_fallback_used, llm_score) for conversation logging
+        for i, attack in enumerate(extracted_attack_list):
+            if attack is not None and hasattr(judgeLM, 'last_details') and i < len(judgeLM.last_details):
+                d = judgeLM.last_details[i]
+                attack['llm_fallback_used'] = d.get('llm_fallback_used', False)
+                attack['llm_score'] = d.get('llm_score')
 
         # Store iteration data for conversation logging
         extracted_attack_list_per_iter.append(extracted_attack_list)
@@ -789,8 +804,14 @@ if __name__ == '__main__':
             'claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022',
             'claude-3-opus-20250219',
             'claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5-20251001',
+            'nvidia-llama3-8b-instruct', 'nvidia-llama3-70b-instruct',
+            'nvidia-codellama-70b', 'nvidia-phi-3-mini-4k-instruct',
+            'nvidia-mistral-7b-instruct', 'nvidia-mixtral-8x7b-instruct',
+            'nvidia-nemotron-4-340b-instruct',
+            'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite',
+            'gemini-3-flash', 'gemini-3-pro',
         ],
-        help='LLM model used as secondary validator in codeql-llm judge (default: gpt-4)'
+        help='LLM model used as fallback validator when a SAST tool scores 1 (default: gpt-4)'
     )
     parser.add_argument(
         '--divergence-tolerance',
