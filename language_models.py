@@ -1,6 +1,6 @@
 import os
 import litellm
-from config import TOGETHER_MODEL_NAMES, LITELLM_TEMPLATES, API_KEY_NAMES, Model
+from config import TOGETHER_MODEL_NAMES, NVIDIA_MODEL_NAMES, LITELLM_TEMPLATES, API_KEY_NAMES, LOCAL_MODEL_API_BASES, Model
 from loggers import logger
 from common import get_api_key
 import time
@@ -167,15 +167,27 @@ class APILiteLLM(LanguageModel):
         self.set_eos_tokens(self.model_name)
         
     def get_litellm_model_name(self, model_name):
-        if model_name in TOGETHER_MODEL_NAMES:
+        if model_name in LOCAL_MODEL_API_BASES:
+            self.api_base = LOCAL_MODEL_API_BASES[model_name]
+            self.use_open_source_model = False
+            litellm_name = f"openai/{model_name.value}"
+        elif model_name in TOGETHER_MODEL_NAMES:
             litellm_name = TOGETHER_MODEL_NAMES[model_name]
             self.use_open_source_model = True
+            self.api_base = None
+        elif model_name in NVIDIA_MODEL_NAMES:
+            litellm_name = NVIDIA_MODEL_NAMES[model_name]
+            self.use_open_source_model = False
+            self.api_base = None
         else:
-            self.use_open_source_model =  False
-            #if self.use_open_source_model:
-                # Output warning, there should be a TogetherAI model name
-                #logger.warning(f"Warning: No TogetherAI model name for {model_name}.")
-            litellm_name = model_name.value 
+            self.use_open_source_model = False
+            self.api_base = None
+            raw_name = model_name.value
+            # Explicitly prefix Claude models so litellm always resolves the provider
+            if raw_name.startswith("claude-"):
+                litellm_name = f"anthropic/{raw_name}"
+            else:
+                litellm_name = raw_name
         return litellm_name
     
     def set_eos_tokens(self, model_name):
@@ -222,16 +234,25 @@ class APILiteLLM(LanguageModel):
             'gpt-4.1' in self.litellm_model_name.lower(),
         ])
 
+        # Claude models reject requests with both temperature and top_p set
+        is_claude_model = 'claude' in self.litellm_model_name.lower()
+
         # Build completion parameters
         completion_params = {
             'model': self.litellm_model_name,
             'messages': convs_list,
             'api_key': self.api_key,
             'temperature': temperature,
-            'top_p': top_p,
             'num_retries': self.API_MAX_RETRY,
             'seed': 0,
         }
+
+        # Only include top_p for non-Claude models
+        if not is_claude_model:
+            completion_params['top_p'] = top_p
+
+        if self.api_base:
+            completion_params['api_base'] = self.api_base
 
         # Add stop sequences only for models that support them
         if not is_new_openai_model:

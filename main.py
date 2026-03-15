@@ -20,40 +20,54 @@ def memory_usage_psutil():
     return mem
 
 
-def correct_improvement_scores(improvements, actual_scores):
+def extract_claimed_scores(improvements):
+    """Extract claimed scores from improvement text without modifying it."""
+    claimed_scores = []
+    for improvement in improvements:
+        if improvement is None or improvement == "Model refused to generate prompts":
+            claimed_scores.append(None)
+            continue
+        match = re.search(r'(?:Score|score)\s+(\d+)', improvement)
+        claimed_scores.append(int(match.group(1)) if match else None)
+    return claimed_scores
+
+
+def correct_improvement_scores(improvements, prev_scores):
     """
-    Replace claimed scores in improvement text with actual judge scores.
+    Replace claimed scores in improvement text with actual judge scores
+    from the PREVIOUS iteration (the score the attack model was given).
 
-    Args:
-        improvements: List of improvement strings from attack model
-        actual_scores: List of actual judge scores
-
-    Returns:
-        List of corrected improvement strings
+    Returns (corrected_improvements, claimed_scores).
     """
     corrected = []
+    claimed_scores = []
 
-    for improvement, actual_score in zip(improvements, actual_scores):
+    for improvement, prev_score in zip(improvements, prev_scores):
         if improvement is None or improvement == "Model refused to generate prompts":
             corrected.append(improvement)
+            claimed_scores.append(None)
             continue
 
-        # Replace "Score X:" pattern with actual score
-        # Pattern matches: "Score 1:", "Score 10:", etc.
+        # Extract the claimed score before replacing
+        match = re.search(r'(?:Score|score)\s+(\d+)', improvement)
+        claimed = int(match.group(1)) if match else None
+        claimed_scores.append(claimed)
+
+        # Replace with previous iteration's actual judge score
         corrected_text = re.sub(
-            r'Score\s+\d+:',
-            f'Score {actual_score}:',
+            r'(?:Score|score)\s+\d+:',
+            f'Score {prev_score}:',
             improvement,
             count=1
         )
 
         # If no pattern found, prepend the actual score
-        if corrected_text == improvement and not improvement.startswith('Score'):
-            corrected_text = f'Score {actual_score}: {improvement}'
+        if corrected_text == improvement and not re.match(r'(?:Score|score)', improvement):
+            corrected_text = f'Score {prev_score}: {improvement}'
 
         corrected.append(corrected_text)
 
-    return corrected
+    return corrected, claimed_scores
 
 
 def print_success_celebration(mode="standard"):
@@ -126,6 +140,13 @@ ITERATION DETAILS:
 """
 
     for iteration_num, data in enumerate(iteration_data, 1):
+        claimed = data.get('claimed_score')
+        actual = data.get('score', 'N/A')
+
+        score_trace = ""
+        if claimed is not None:
+            score_trace = f"\n[SCORE TRACE]: Claimed={claimed}, Actual Judge={actual}\n"
+
         formatted += f"""
 {'='*80}
 ITERATION {iteration_num}
@@ -133,7 +154,7 @@ ITERATION {iteration_num}
 
 [IMPROVEMENT]:
 {data.get('improvement', 'N/A')}
-
+{score_trace}
 [ATTACK PROMPT]:
 {data.get('prompt', 'N/A')}
 
@@ -141,7 +162,7 @@ ITERATION {iteration_num}
 {data.get('response', 'N/A')}
 
 [SCORE]:
-{data.get('score', 'N/A')}
+{actual}
 
 """
 
@@ -197,7 +218,8 @@ def save_stream_conversations(convs_list, system_prompts, extracted_attack_list_
                     'improvement': improvement,
                     'prompt': prompt,
                     'response': response,
-                    'score': score
+                    'score': score,
+                    'claimed_score': attack_dict.get('claimed_score') if attack_dict is not None else None,
                 })
 
         # Get system prompt for this stream (round-robin)
@@ -313,6 +335,7 @@ def log_iteration_json(iteration, extracted_attack_list, target_response_list,
             attack_output = {
                 "improvement": attack.get("improvement", ""),
                 "prompt":      attack.get("prompt", ""),
+                "claimed_score": attack.get("claimed_score"),
             }
         else:
             attack_output = {
@@ -412,6 +435,7 @@ def main(args):
     wandb_logger = EnhancedWandBLogger(args, system_prompts, judge_type=judge_type)
 
     target_response_list, judge_scores = None, None
+    prev_judge_scores = None  # Track previous iteration's scores for improvement correction
 
     # Storage for conversation history logging
     extracted_attack_list_per_iter = []
@@ -523,13 +547,21 @@ def main(args):
 
         logger.debug("Finished getting judge scores.")
 
-        # ✅ CORRECT: Replace claimed scores in improvements with actual judge scores
-        improv_list = correct_improvement_scores(improv_list, judge_scores)
+        # Correct improvement text with PREVIOUS iteration's actual score
+        # (the improvement analyzes the previous outcome, not the current one)
+        if prev_judge_scores is not None:
+            improv_list, claimed_scores = correct_improvement_scores(improv_list, prev_judge_scores)
+        else:
+            # Iteration 1: no previous score — extract claimed scores only, don't correct
+            claimed_scores = extract_claimed_scores(improv_list)
 
-        # Update extracted_attack_list with corrected improvements
-        for i, (attack, corrected_improv) in enumerate(zip(extracted_attack_list, improv_list)):
+        # Update extracted_attack_list with corrected improvements and claimed scores
+        for i, (attack, corrected_improv, claimed) in enumerate(
+            zip(extracted_attack_list, improv_list, claimed_scores)
+        ):
             if attack is not None:
                 attack['improvement'] = corrected_improv
+                attack['claimed_score'] = claimed
 
         # Store iteration data for conversation logging
         extracted_attack_list_per_iter.append(extracted_attack_list)
@@ -558,6 +590,9 @@ def main(args):
         # Truncate conversation to avoid context length issues
         for i, conv in enumerate(convs_list):
             conv.messages = conv.messages[-2 * (args.keep_last_n):]
+
+        # Update previous scores for next iteration's correction
+        prev_judge_scores = judge_scores
 
         # Early stopping
         # CodeQL-LLM judge: stop when CodeQL score >= codeql_threshold
