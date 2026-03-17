@@ -1,9 +1,10 @@
 """
-Enhanced WandB Logger with support for CodeQL-LLM and CodeQL-Semgrep judges.
+Enhanced WandB Logger with support for CodeQL-LLM, CodeQL-Semgrep, and
+CodeQL-Bandit judges.
 
 Logs per-iteration line charts for each judge tool separately (CodeQL, Semgrep,
-LLM validator) plus their mean, so divergence between tools is visible at a
-glance in the WandB dashboard.
+Bandit, LLM validator) plus their mean, so divergence between tools is visible
+at a glance in the WandB dashboard.
 """
 
 import wandb
@@ -18,6 +19,8 @@ def get_judge_type(args) -> str:
         return 'codeql-llm'
     if judge_model == 'codeql-semgrep':
         return 'codeql-semgrep'
+    if judge_model == 'codeql-bandit':
+        return 'codeql-bandit'
     if judge_model.startswith('sast-'):
         return 'sast'
     return 'standard'
@@ -34,7 +37,7 @@ class EnhancedWandBLogger:
 
     def __init__(self, args, system_prompts, judge_type: str = 'standard'):
         self.judge_type = judge_type
-        self.is_sast_judge = judge_type in ('codeql-llm', 'codeql-semgrep')
+        self.is_sast_judge = judge_type in ('codeql-llm', 'codeql-semgrep', 'codeql-bandit')
 
         self.logger = wandb.init(
             project="jailbreak-llms",
@@ -58,6 +61,7 @@ class EnhancedWandBLogger:
                 "divergence_tolerance": getattr(args, 'divergence_tolerance', None),
                 "sast_weight_codeql":   getattr(args, 'sast_weight_codeql', None),
                 "sast_weight_semgrep":  getattr(args, 'sast_weight_semgrep', None),
+                "sast_weight_bandit":   getattr(args, 'sast_weight_bandit', None),
             }
         )
 
@@ -74,6 +78,7 @@ class EnhancedWandBLogger:
         self.tool_scores = {
             'codeql': [],
             'semgrep': [],
+            'bandit': [],
             'llm': [],
             'effective': [],
         }
@@ -117,6 +122,12 @@ class EnhancedWandBLogger:
                     df["semgrep_score"] = semgrep_scores
                     self.tool_scores['semgrep'].extend(semgrep_scores)
 
+                # Bandit scores (codeql-bandit only)
+                if self.judge_type == 'codeql-bandit':
+                    bandit_scores = [d.get('bandit_score', 1) for d in details_list]
+                    df["bandit_score"] = bandit_scores
+                    self.tool_scores['bandit'].extend(bandit_scores)
+
                 # LLM scores
                 llm_scores = [d.get('llm_score') or 1 for d in details_list]
                 df["llm_score"] = llm_scores
@@ -132,7 +143,7 @@ class EnhancedWandBLogger:
                 df["target_cwe_found"] = [d.get('target_cwe_found', False) for d in details_list]
 
                 # Divergence
-                if self.judge_type == 'codeql-semgrep':
+                if self.judge_type in ('codeql-semgrep', 'codeql-bandit'):
                     df["tool_divergence"] = [d.get('tool_divergence', 0) for d in details_list]
                 else:
                     df["divergence"] = [d.get('divergence', 0) for d in details_list]
@@ -202,6 +213,9 @@ class EnhancedWandBLogger:
             if "semgrep_score" in df.columns:
                 log_data["scores/semgrep_mean"] = df["semgrep_score"].mean()
                 log_data["scores/semgrep_max"] = df["semgrep_score"].max()
+            if "bandit_score" in df.columns:
+                log_data["scores/bandit_mean"] = df["bandit_score"].mean()
+                log_data["scores/bandit_max"] = df["bandit_score"].max()
 
             # Code detection rate
             log_data["code/has_code_rate"] = df["has_code"].mean() * 100
@@ -221,6 +235,8 @@ class EnhancedWandBLogger:
                 log_data[f"stream_{stream_num}/effective"] = row.get("effective_score", 0)
                 if "semgrep_score" in df.columns:
                     log_data[f"stream_{stream_num}/semgrep"] = row.get("semgrep_score", 0)
+                if "bandit_score" in df.columns:
+                    log_data[f"stream_{stream_num}/bandit"] = row.get("bandit_score", 0)
                 log_data[f"stream_{stream_num}/llm"] = row.get("llm_score", 0)
 
             # Cross-iteration correlation (once we have enough data)
@@ -246,12 +262,25 @@ class EnhancedWandBLogger:
                 except Exception:
                     pass
 
+            if len(self.tool_scores.get('bandit', [])) > 2 and len(self.tool_scores['codeql']) > 2:
+                try:
+                    corr = np.corrcoef(
+                        self.tool_scores['codeql'],
+                        self.tool_scores['bandit'],
+                    )[0, 1]
+                    if not np.isnan(corr):
+                        log_data["correlation/codeql_bandit"] = float(corr)
+                except Exception:
+                    pass
+
             # Detailed table for this iteration
             detail_cols = ["conv_num", "judge_scores", "codeql_score",
                            "effective_score", "llm_score",
                            "has_code", "language", "target_cwe_found"]
             if "semgrep_score" in df.columns:
                 detail_cols.insert(4, "semgrep_score")
+            if "bandit_score" in df.columns:
+                detail_cols.insert(4, "bandit_score")
             if "tool_divergence" in df.columns:
                 detail_cols.append("tool_divergence")
             if "large_divergence" in df.columns:
@@ -288,6 +317,8 @@ class EnhancedWandBLogger:
             parts = [f"CodeQL: {iter_df['codeql_score'].mean():.1f}"]
             if 'semgrep_score' in iter_df.columns:
                 parts.append(f"Semgrep: {iter_df['semgrep_score'].mean():.1f}")
+            if 'bandit_score' in iter_df.columns:
+                parts.append(f"Bandit: {iter_df['bandit_score'].mean():.1f}")
             if 'llm_score' in iter_df.columns:
                 parts.append(f"LLM: {iter_df['llm_score'].mean():.1f}")
             if 'effective_score' in iter_df.columns:
@@ -339,6 +370,9 @@ class EnhancedWandBLogger:
             if self.tool_scores['semgrep']:
                 print(f"  Semgrep  mean: {np.mean(self.tool_scores['semgrep']):.2f}  "
                       f"max: {max(self.tool_scores['semgrep'])}")
+            if self.tool_scores['bandit']:
+                print(f"  Bandit   mean: {np.mean(self.tool_scores['bandit']):.2f}  "
+                      f"max: {max(self.tool_scores['bandit'])}")
             print(f"  LLM      mean: {np.mean(self.tool_scores['llm']):.2f}  "
                   f"max: {max(self.tool_scores['llm'])}")
             print(f"  Effective mean: {np.mean(self.tool_scores['effective']):.2f}  "

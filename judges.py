@@ -59,6 +59,22 @@ def load_judge(args):
             divergence_tolerance=getattr(args, 'divergence_tolerance', 3),
         )
 
+    if judge_model == 'codeql-bandit':
+        from dual_sast import CodeQLBanditJudge
+        llm_val = getattr(args, 'llm_validator', None)
+        use_llm = llm_val if getattr(args, '_llm_validator_explicitly_set', False) else None
+        return CodeQLBanditJudge(
+            goal=goal,
+            target_str=target_str,
+            target_cwe=target_cwe,
+            weight_codeql=getattr(args, 'sast_weight_codeql', 0.5),
+            weight_bandit=getattr(args, 'sast_weight_bandit', 0.5),
+            codeql_threshold=getattr(args, 'codeql_threshold', 8),
+            llm_validator_model=use_llm,
+            attack_model=getattr(args, 'attack_model', None),
+            divergence_tolerance=getattr(args, 'divergence_tolerance', 3),
+        )
+
     if judge_model.startswith('sast-'):
         return SASTJudge(
             goal=goal,

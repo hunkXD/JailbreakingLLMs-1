@@ -357,6 +357,7 @@ def log_iteration_json(iteration, extracted_attack_list, target_response_list,
             judge_info.update({
                 "codeql_score":     d.get("codeql_score"),
                 "semgrep_score":    d.get("semgrep_score"),
+                "bandit_score":     d.get("bandit_score"),
                 "combined_score":   d.get("combined_score"),
                 "llm_score":        d.get("llm_score"),
                 "llm_fallback_used": d.get("llm_fallback_used"),
@@ -783,6 +784,8 @@ if __name__ == '__main__':
             'codeql-llm',
             # CodeQL + Semgrep weighted combination (optional LLM validator)
             'codeql-semgrep',
+            # CodeQL + Bandit weighted combination (optional LLM validator)
+            'codeql-bandit',
         ],
         help='Judge model for scoring'
     )
@@ -832,6 +835,12 @@ if __name__ == '__main__':
         type=float,
         default=0.4,
         help='Weight for Semgrep in codeql-semgrep judge (default: 0.4)'
+    )
+    parser.add_argument(
+        '--sast-weight-bandit',
+        type=float,
+        default=0.5,
+        help='Weight for Bandit in codeql-bandit judge (default: 0.5)'
     )
 
     parser.add_argument(
