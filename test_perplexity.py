@@ -23,8 +23,8 @@ response = requests.post(
 )
 
 if response.status_code == 200:
-    print("✓ Perplexity API works!")
+    print("Perplexity API works!")
     print(f"Response: {response.json()['choices'][0]['message']['content']}")
 else:
-    print(f"✗ Error: {response.status_code}")
+    print(f"Error: {response.status_code}")
     print(response.text)

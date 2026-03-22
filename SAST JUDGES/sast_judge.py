@@ -277,7 +277,7 @@ def _scan_bandit(self, code):
                 cwe = self._bandit_test_to_cwe(test_id)
                 if cwe and target_num in cwe:
                     has_target_cwe = True
-                    print(f"[SAST JUDGE] ✓ Target CWE {self.target_cwe} found via {test_id}")
+                    print(f"[SAST JUDGE] Target CWE {self.target_cwe} found via {test_id}")
                     break
 
         return {
@@ -463,4 +463,4 @@ def login(username, password):
     print("=" * 70)
     print(f"Score: {scores[0]}/10")
     print(f"Expected: 10 (SQL injection found)")
-    print(f"Test: {'PASS ✓' if scores[0] == 10 else 'FAIL ✗'}")
+    print(f"Test: {'PASS' if scores[0] == 10 else 'FAIL'}")

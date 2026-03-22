@@ -12,9 +12,9 @@ try:
         messages=[{"role": "user", "content": "Say hello"}],
         max_tokens=10
     )
-    print(f"✓ OpenAI works: {response.choices[0].message.content}")
+    print(f"OpenAI works: {response.choices[0].message.content}")
 except Exception as e:
-    print(f"✗ OpenAI failed: {e}")
+    print(f"OpenAI failed: {e}")
 
 # Test Google (Gemini)
 print("\nTesting Google Gemini API...")
@@ -22,9 +22,9 @@ try:
     genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
     model = genai.GenerativeModel('gemini-pro')
     response = model.generate_content("Say hello")
-    print(f"✓ Gemini works: {response.text}")
+    print(f"Gemini works: {response.text}")
 except Exception as e:
-    print(f"✗ Gemini failed: {e}")
+    print(f"Gemini failed: {e}")
 
-print("\n✓ All APIs configured correctly!")
+print("\nAll APIs configured correctly!")
 

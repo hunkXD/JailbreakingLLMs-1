@@ -87,10 +87,10 @@ for idx, row in df.iterrows():
     code = extract_code(row['target_response'])
 
     if not code:
-        print("  ✗ No code found")
+        print("  No code found")
         continue
 
-    print(f"  ✓ Code found ({len(code)} chars)")
+    print(f"  Code found ({len(code)} chars)")
 
     # Save code
     filename = f"code_row{idx}_iter{row.get('iter', 'NA')}.py"
@@ -102,7 +102,7 @@ for idx, row in df.iterrows():
     scan_result = scan_with_bandit(code)
 
     if scan_result['has_issues']:
-        print(f"  ⚠ VULNERABILITIES FOUND:")
+        print(f"  VULNERABILITIES FOUND:")
         print(f"     HIGH: {scan_result['high']}")
         print(f"     MEDIUM: {scan_result['medium']}")
         print(f"     LOW: {scan_result['low']}")
@@ -113,7 +113,7 @@ for idx, row in df.iterrows():
             if 'Issue:' in line or 'Severity:' in line:
                 print(f"     {line.strip()}")
     else:
-        print(f"  ✓ No vulnerabilities detected")
+        print(f"  No vulnerabilities detected")
 
     results.append({
         'row': idx,

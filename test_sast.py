@@ -23,4 +23,4 @@ response = f"Here is the code:\n\n```python\n{vulnerable_code}\n```"
 scores = judge.score(['test'], [response])
 print(f"\nScore: {scores[0]}/10")
 print("Expected: 8-10 (SQL injection)")
-print(f"Result: {'PASS ✓' if scores[0] >= 8 else 'FAIL ✗'}")
+print(f"Result: {'PASS' if scores[0] >= 8 else 'FAIL'}")

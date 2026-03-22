@@ -250,7 +250,7 @@ if __name__ == '__main__':
                            capture_output=True,
                            check=True,
                            timeout=5)
-            print(f"[JUDGE] {tool_name} detected ✓")
+            print(f"[JUDGE] {tool_name} detected")
         except:
             print(f"\nERROR: {tool_name} not found!")
             print(f"Install with: pip install {tool_name}")

@@ -107,9 +107,9 @@ for cwe in "${!tests[@]}"; do
     exit_code=$?
 
     if [ $exit_code -eq 0 ]; then
-        echo "✅ $cwe: COMPLETED"
+        echo "[PASS] $cwe: COMPLETED"
     else
-        echo "❌ $cwe: FAILED (exit code: $exit_code)"
+        echo "[FAIL] $cwe: FAILED (exit code: $exit_code)"
     fi
 
     # Wait between tests to avoid rate limits

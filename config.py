@@ -45,6 +45,7 @@ class Model(Enum):
     nvidia_mistral_7b = "nvidia-mistral-7b-instruct"
     nvidia_mixtral_8x7b = "nvidia-mixtral-8x7b-instruct"
     nvidia_nemotron_340b = "nvidia-nemotron-4-340b-instruct"
+    nvidia_qwen25_coder_32b = "nvidia-qwen25-coder-32b"
 
 MODEL_NAMES = [model.value for model in Model]
 
@@ -69,6 +70,7 @@ NVIDIA_MODEL_NAMES: dict[Model, str] = {
     Model.nvidia_mistral_7b: "nvidia_nim/mistralai/mistral-7b-instruct",
     Model.nvidia_mixtral_8x7b: "nvidia_nim/mistralai/mixtral-8x7b-instruct",
     Model.nvidia_nemotron_340b: "nvidia_nim/nvidia/nemotron-4-340b-instruct",
+    Model.nvidia_qwen25_coder_32b: "nvidia_nim/qwen/qwen2.5-coder-32b-instruct",
 }
 
 FASTCHAT_TEMPLATE_NAMES: dict[Model, str] = {
@@ -107,6 +109,7 @@ FASTCHAT_TEMPLATE_NAMES: dict[Model, str] = {
     Model.nvidia_mistral_7b: "mistral",
     Model.nvidia_mixtral_8x7b: "mixtral",
     Model.nvidia_nemotron_340b: "zero_shot",
+    Model.nvidia_qwen25_coder_32b: "qwen",
 }
 
 API_KEY_NAMES: dict[Model, str] = {
@@ -145,6 +148,7 @@ API_KEY_NAMES: dict[Model, str] = {
     Model.nvidia_mistral_7b: "NVIDIA_NIM_API_KEY",
     Model.nvidia_mixtral_8x7b: "NVIDIA_NIM_API_KEY",
     Model.nvidia_nemotron_340b: "NVIDIA_NIM_API_KEY",
+    Model.nvidia_qwen25_coder_32b: "NVIDIA_NIM_API_KEY",
 }
 
 LOCAL_MODEL_API_BASES: dict[Model, str] = {

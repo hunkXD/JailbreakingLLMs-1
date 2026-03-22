@@ -11,9 +11,9 @@ try:
         attack_model_name="gpt-3.5-turbo",
         target_model_name="gpt-4o"
     )
-    print("✓ gpt-4o is supported!")
+    print("gpt-4o is supported!")
 except Exception as e:
-    print(f"✗ gpt-4o not supported: {e}")
+    print(f"gpt-4o not supported: {e}")
 
 try:
     print("\nTesting claude-3-5-sonnet...")
@@ -21,6 +21,6 @@ try:
         attack_model_name="gpt-3.5-turbo",
         target_model_name="claude-3-5-sonnet"
     )
-    print("✓ claude-3-5-sonnet is supported!")
+    print("claude-3-5-sonnet is supported!")
 except Exception as e:
-    print(f"✗ claude-3-5-sonnet not supported: {e}")
+    print(f"claude-3-5-sonnet not supported: {e}")

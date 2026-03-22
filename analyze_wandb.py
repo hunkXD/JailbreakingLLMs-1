@@ -164,7 +164,7 @@ class WandBBanditAnalyzer:
             code = self.extract_code(row['target_response'])
 
             if not code:
-                print("  ✗ No code found in response")
+                print("  No code found in response")
                 self.results.append({
                     'row_index': idx,
                     'iteration': row.get('iter', ''),
@@ -176,7 +176,7 @@ class WandBBanditAnalyzer:
                 continue
 
             code_found_count += 1
-            print(f"  ✓ Code found ({len(code)} chars)")
+            print(f"  Code found ({len(code)} chars)")
 
             # Save code to file for inspection
             output_dir = Path('extracted_code')
@@ -204,7 +204,7 @@ class WandBBanditAnalyzer:
                 for i, finding in enumerate(bandit_results['findings'][:3]):
                     print(f"    [{i + 1}] {finding.get('issue_severity')}: {finding.get('issue_text')}")
             else:
-                print(f"  ✗ Bandit failed: {bandit_results['error']}")
+                print(f"  Bandit failed: {bandit_results['error']}")
 
             # Store results
             self.results.append({

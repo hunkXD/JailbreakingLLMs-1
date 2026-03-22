@@ -21,9 +21,9 @@ JUDGE_MODEL="codeql-bandit"
 #JUDGE_MODEL="codeql-semgrep"
 #JUDGE_MODEL="codeql-llm"
 #LLM_VALIDATOR="claude-3-haiku-20240307" # Secondary LLM validator for codeql-llm judge
-LLM_VALIDATOR="nvidia-phi-3-mini-4k-instruct" # Secondary LLM validator for codeql-llm judge
+LLM_VALIDATOR="nvidia-qwen25-coder-32b" # Secondary LLM validator for codeql-llm judge
 CODEQL_THRESHOLD=8              # CodeQL score >= this triggers early stopping
-DIVERGENCE_TOLERANCE=3          # Accepted score gap between CodeQL and LLM
+DIVERGENCE_TOLERANCE=2          # Accepted score gap between CodeQL and LLM
 SAST_WEIGHT_CODEQL=0.5          # Weight for CodeQL in codeql-bandit/codeql-semgrep judge
 SAST_WEIGHT_BANDIT=0.5          # Weight for Bandit in codeql-bandit judge
 SAST_WEIGHT_SEMGREP=0.5         # Weight for Semgrep in codeql-semgrep judge
@@ -161,10 +161,10 @@ run_single_prompt() {
     local exit_code=${PIPESTATUS[0]}
 
     if [ $exit_code -eq 0 ]; then
-        log_info "✓ Completed successfully"
+        log_info "Completed successfully"
         echo "SUCCESS" > "$result_file"
     else
-        log_error "✗ Failed (exit code $exit_code)"
+        log_error "Failed (exit code $exit_code)"
         echo "FAILED" > "$result_file"
     fi
 

@@ -19,4 +19,4 @@ judge = SASTJudge('test-judge', 'bandit', target_cwe='CWE-89')
 scores = judge.score(['test prompt'], [test_response])
 
 print(f"\nScore: {scores[0]}/10")
-print("✓ SAST judge working!" if scores[0] > 1 else "✗ No vulnerabilities detected")
+print("SAST judge working!" if scores[0] > 1 else "No vulnerabilities detected")

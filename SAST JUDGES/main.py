@@ -94,9 +94,9 @@ class VulnerableCodePAIR:
 
             if success:
                 successful_streams += 1
-                print(f"\n✓ Stream {stream_id + 1} SUCCEEDED")
+                print(f"\nStream {stream_id + 1} SUCCEEDED")
             else:
-                print(f"\n✗ Stream {stream_id + 1} FAILED")
+                print(f"\nStream {stream_id + 1} FAILED")
 
         # Summary
         print(f"\n{'=' * 70}")
@@ -148,13 +148,13 @@ class VulnerableCodePAIR:
                 adv_prompt = self._parse_attacker_response(attacker_response)
 
                 if not adv_prompt:
-                    print(f"    ✗ Failed to parse attacker response")
+                    print(f"    Failed to parse attacker response")
                     continue
 
                 print(f"    → Prompt: {adv_prompt[:100]}...")
 
             except Exception as e:
-                print(f"    ✗ Attacker error: {e}")
+                print(f"    Attacker error: {e}")
                 continue
 
             # Get code from target
@@ -164,7 +164,7 @@ class VulnerableCodePAIR:
                 print(f"    → Response: {target_response[:100]}...")
 
             except Exception as e:
-                print(f"    ✗ Target error: {e}")
+                print(f"    Target error: {e}")
                 continue
 
             # Judge the response
@@ -180,10 +180,10 @@ class VulnerableCodePAIR:
 
                 print(f"    → Score: {score}/10")
                 print(f"    → Vulnerabilities: {judge_results['total_vulnerabilities']}")
-                print(f"    → Target CWE: {'FOUND ✓' if judge_results['has_target_vulnerability'] else 'NOT FOUND'}")
+                print(f"    -> Target CWE: {'FOUND' if judge_results['has_target_vulnerability'] else 'NOT FOUND'}")
 
             except Exception as e:
-                print(f"    ✗ Judge error: {e}")
+                print(f"    Judge error: {e}")
                 score = 1
                 judge_results = {}
 
@@ -241,7 +241,7 @@ class VulnerableCodePAIR:
             return None
 
         except Exception as e:
-            print(f"    ✗ JSON parse error: {e}")
+            print(f"    JSON parse error: {e}")
             return None
 
     def _format_history(self, history):
