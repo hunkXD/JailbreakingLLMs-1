@@ -32,11 +32,19 @@ SAST_WEIGHT_SEMGREP=0.5         # Weight for Semgrep in codeql-semgrep judge
 # These have no Python equivalent — keep original C language for these.
 C_ONLY_CWES="CWE-119 CWE-125 CWE-190 CWE-416 CWE-476 CWE-787"
 N_STREAMS=3
-N_ITERATIONS=20
+N_ITERATIONS=2
 TARGET_MAX_N_TOKENS=2000
 ATTACK_MAX_N_TOKENS=2000
 KEEP_LAST_N=4
 USE_JAILBREAKBENCH=true
+
+# ---------------------------------------------------------------------------
+# Load API keys from .env if present
+# ---------------------------------------------------------------------------
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    source "$SCRIPT_DIR/.env"
+fi
 
 # ---------------------------------------------------------------------------
 # Terminal colours
@@ -174,6 +182,25 @@ run_single_prompt() {
 }
 
 # ---------------------------------------------------------------------------
+# CSV preprocessor — converts quoted CSV to tab-separated output.
+# Handles quoted fields with internal commas correctly via Python csv module.
+# Outputs: prompt_id \t cwe_name \t nl_prompt \t filename \t language
+# Skips the header row.
+# ---------------------------------------------------------------------------
+csv_to_tsv() {
+    python3 -c "
+import csv, sys
+reader = csv.reader(open(sys.argv[1], newline=''))
+next(reader)  # skip header
+for row in reader:
+    if len(row) >= 5:
+        # Replace embedded newlines with spaces so bash read gets one line per row
+        clean = [field.replace('\n', ' ').replace('\r', ' ') for field in row[:5]]
+        print('\t'.join(clean))
+" "$1"
+}
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -221,13 +248,13 @@ main() {
     local failed=0
     local prompts_processed=0
 
-    while IFS=',' read -r prompt_id cwe_col nl_prompt rest; do
+    # Use Python csv module to parse quoted CSV fields correctly.
+    # csv_to_tsv outputs tab-separated: prompt_id, cwe_name, nl_prompt, filename, language
+    while IFS=$'\t' read -r prompt_id cwe_col nl_prompt filename lang_raw; do
         line_num=$((line_num + 1))
 
-        # Skip CSV header
-        [ $line_num -eq 1 ] && continue
-
-        local data_idx=$((line_num - 2))
+        # data_idx is 0-based (header already skipped by csv_to_tsv)
+        local data_idx=$((line_num - 1))
 
         # Index-based filtering: if --indices is set, only run those specific rows
         if [ -n "$INDICES" ]; then
@@ -247,17 +274,14 @@ main() {
             fi
         fi
 
-        # Strip quotes
+        # Defensive quote stripping (csv module should have removed them already)
         prompt_id=$(echo "$prompt_id" | tr -d '"')
         cwe_col=$(echo "$cwe_col"     | tr -d '"')
         nl_prompt=$(echo "$nl_prompt" | tr -d '"')
 
-        # Extract Language column (5th CSV field = 2nd field of $rest after Filename)
-        local lang_raw
-        lang_raw=$(echo "$rest" | cut -d',' -f2 | tr -d '"' | tr -d ' ')
-        # Normalise to title case: "c" → "C", "python" → "Python", etc.
+        # Normalise language to title case
         local lang
-        case "$(echo "$lang_raw" | tr '[:upper:]' '[:lower:]')" in
+        case "$(echo "$lang_raw" | tr -d '"' | tr -d ' ' | tr '[:upper:]' '[:lower:]')" in
             c)          lang="C" ;;
             c++|cpp)    lang="C++" ;;
             python|py)  lang="Python" ;;
@@ -283,10 +307,10 @@ main() {
         local prompt_judge="$JUDGE_MODEL"
         if [ "$lang" = "C" ] || [ "$lang" = "C++" ]; then
             if is_c_only_cwe "$cwe"; then
-                log_info "  Keeping $lang for $cwe (C-only CWE) → judge: codeql-semgrep"
+                log_info "  Keeping $lang for $cwe (C-only CWE) -> judge: codeql-semgrep"
                 prompt_judge="codeql-semgrep"
             else
-                log_info "  Overriding $lang → Python for $cwe (shared CWE) → judge: $JUDGE_MODEL"
+                log_info "  Overriding $lang -> Python for $cwe (shared CWE) -> judge: $JUDGE_MODEL"
                 lang="Python"
             fi
         fi
@@ -311,7 +335,7 @@ main() {
             failed=$((failed + 1))
         fi
 
-    done < "$DATASET_PATH"
+    done < <(csv_to_tsv "$DATASET_PATH")
 
     echo ""
     echo "========================================================================"
