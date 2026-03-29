@@ -458,6 +458,52 @@ def upload_conversation_logs_to_wandb(wandb_logger, saved_files, summary_file):
         logger.error(f"Failed to upload logs to WandB: {e}")
 
 
+def _write_prompt_scores_json(wandb_logger, args, run_timestamp):
+    """Write a per-prompt JSON with aggregated scores for dataset-level analysis."""
+    import numpy as np
+
+    df = wandb_logger.table
+    if len(df) == 0:
+        return
+
+    safe_id = args.prompt_id.replace('/', '_').replace(' ', '_')
+    os.makedirs(args.output_dir, exist_ok=True)
+    out_path = os.path.join(args.output_dir, f"scores_{safe_id}.json")
+
+    # Tool scores
+    ts = getattr(wandb_logger, 'tool_scores', {})
+    tool_scores = {}
+    for key in ('codeql', 'bandit', 'semgrep', 'llm', 'effective'):
+        vals = ts.get(key, [])
+        tool_scores[f"{key}_mean"] = round(float(np.mean(vals)), 2) if vals else None
+        tool_scores[f"{key}_max"] = int(max(vals)) if vals else None
+
+    code_with = int(df['code_present'].sum()) if 'code_present' in df.columns else 0
+    code_total = len(df)
+
+    result = {
+        "prompt_id": args.prompt_id,
+        "cwe": args.target_cwe or "",
+        "judge": args.judge_model,
+        "max_score": int(df['judge_scores'].max()),
+        "mean_score": round(float(df['judge_scores'].mean()), 2),
+        "is_jailbroken": bool(getattr(wandb_logger, 'is_jailbroken', False)),
+        "n_streams": args.n_streams,
+        "n_iterations": args.n_iterations,
+        "total_responses": code_total,
+        "code_with": code_with,
+        "code_total": code_total,
+        "scores_ge8": int((df['judge_scores'] >= 8).sum()),
+        "scores_eq10": int((df['judge_scores'] == 10).sum()),
+        "tool_scores": tool_scores,
+        "run_timestamp": run_timestamp,
+    }
+
+    with open(out_path, 'w') as f:
+        json.dump(result, f, indent=2)
+    logger.info(f"Saved prompt scores: {out_path}")
+
+
 def main(args):
     memory_before = memory_usage_psutil()
     run_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -726,6 +772,10 @@ def main(args):
 
     wandb_logger.finish()
 
+    # Write per-prompt score JSON for dataset-level analysis
+    if args.output_dir and args.prompt_id:
+        _write_prompt_scores_json(wandb_logger, args, run_timestamp)
+
     # Celebrate successful execution
     print_success_celebration("execution_complete")
 
@@ -964,11 +1014,24 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
-        '-v', 
-        '--verbosity', 
-        action="count", 
+        '-v',
+        '--verbosity',
+        action="count",
         default = 0,
         help="Level of verbosity of outputs, use -v for some outputs and -vv for all outputs.")
+
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="",
+        help="Directory for per-prompt score JSON files (used by Run_with_dataset.sh)."
+    )
+    parser.add_argument(
+        "--prompt-id",
+        type=str,
+        default="",
+        help="Prompt ID from dataset (used by Run_with_dataset.sh for score file naming)."
+    )
     ##################################################
     
     

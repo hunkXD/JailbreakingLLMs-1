@@ -163,6 +163,8 @@ run_single_prompt() {
         --keep-last-n   $KEEP_LAST_N \
         --category      "llmseceval_${cwe}" \
         --index         $row_index \
+        --output-dir    "$SCORES_DIR" \
+        --prompt-id     "$prompt_id" \
         $jbb_flag \
         -v 2>&1 | tee "$log_file"
 
@@ -205,6 +207,11 @@ for row in reader:
 # ---------------------------------------------------------------------------
 
 main() {
+    # Single timestamp for the entire dataset run
+    RUN_TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    SCORES_DIR="$OUTPUT_DIR/scores/$RUN_TIMESTAMP"
+    mkdir -p "$SCORES_DIR"
+
     log_info "LLMSecEval PAIR Runner"
     log_info "Dataset  : $DATASET_PATH"
     log_info "Output   : $OUTPUT_DIR"
@@ -349,6 +356,16 @@ main() {
     echo ""
 
     generate_summary_report
+
+    # Generate detailed statistics report
+    if [ $total_prompts -gt 0 ]; then
+        log_info "Generating detailed statistics report..."
+        log_info "Scores dir: $SCORES_DIR"
+        python3 "$SCRIPT_DIR/analyze_run.py" \
+            --output-dir "$SCORES_DIR" \
+            --report-dir "$SCORES_DIR/reports" \
+            --wandb
+    fi
 }
 
 generate_summary_report() {
