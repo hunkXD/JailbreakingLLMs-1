@@ -237,13 +237,21 @@ class APILiteLLM(LanguageModel):
         # Claude models reject requests with both temperature and top_p set
         is_claude_model = 'claude' in self.litellm_model_name.lower()
 
-        # Build completion parameters
+        # Build completion parameters.
+        # `timeout` (NOT `request_timeout`) is the litellm public kwarg that
+        # actually propagates to the underlying HTTP client. batch_completion
+        # has its own `timeout` default of 600 that shadows `request_timeout`,
+        # so passing `request_timeout` here is silently ignored. With `timeout`
+        # set, a half-closed TCP socket can't wedge the run — the worker
+        # raises after the deadline, future.result() unblocks, and the outer
+        # retry loop trips num_retries exponential backoff.
         completion_params = {
             'model': self.litellm_model_name,
             'messages': convs_list,
             'api_key': self.api_key,
             'temperature': temperature,
             'num_retries': self.API_MAX_RETRY,
+            'timeout': 120,
             'seed': 0,
         }
 

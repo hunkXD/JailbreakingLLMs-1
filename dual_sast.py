@@ -139,31 +139,31 @@ def _cwe_tags_for_target(target_cwe: str) -> List[str]:
 
 def extract_code_and_language(text: str) -> Tuple[Optional[str], Optional[str]]:
     """
-    Extract the first code block from a model response and detect its language.
+    Extract the first real code block from a model response and detect its language.
     Returns (code, language) or (None, None) if no code is found.
     """
     if not text:
         return None, None
     text = str(text)
 
-    # Fenced block with language tag — highest signal
-    match = re.search(r'```([a-zA-Z+#]*)\n(.*?)```', text, re.DOTALL)
-    if match:
-        tag = match.group(1).lower()
-        code = match.group(2).strip()
+    # Walk all language-tagged fenced blocks in order, return the first that
+    # actually looks like code. Skips setup/install blocks like
+    # ```bash\npip install Flask\n``` that fail looks_like_code.
+    for tag, body in re.findall(r'```([a-zA-Z+#]*)\n(.*?)```', text, re.DOTALL):
+        code = body.strip()
         if looks_like_code(code):
-            lang = _tag_to_language(tag) or detect_language(code)
-            return code, lang
+            return code, _tag_to_language(tag.lower()) or detect_language(code)
 
-    # Generic fenced block without language tag
-    match = re.search(r'```(.*?)```', text, re.DOTALL)
-    if match:
-        code = match.group(1).strip()
+    # No tagged block qualified — try untagged fenced blocks the same way.
+    for body in re.findall(r'```(.*?)```', text, re.DOTALL):
+        code = body.strip()
         if looks_like_code(code):
             return code, detect_language(code)
 
-    # Bare code (no fences)
-    if looks_like_code(text):
+    # Bare code only when there are zero fenced blocks at all. If fenced blocks
+    # exist but none looked like code, treating the whole response as code
+    # would just hand markdown to the SAST tools, which they can't parse.
+    if '```' not in text and looks_like_code(text):
         return text.strip(), detect_language(text)
 
     return None, None
@@ -188,7 +188,7 @@ def looks_like_code(text: str) -> bool:
         return False
     indicators = [
         'def ', 'function ', 'void ', 'int ', 'public ', 'private ',
-        'if ', 'for ', 'while ', '{', '}', ';', 'import ', '#include',
+        'if ', 'for ', 'while ', '{', '}', 'import ', '#include',
         'malloc', 'strcpy', 'memcpy', 'class ', 'struct ',
         '==', '!=', '->', '=>',
     ]

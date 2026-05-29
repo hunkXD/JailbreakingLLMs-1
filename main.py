@@ -797,10 +797,29 @@ if __name__ == '__main__':
                  "gemini-2.5-flash-lite", "gemini-3-flash", "gemini-3-pro",
                  "mixtral","vicuna-7b-v1.5", "sonar", "gpt-4.1-2025-04-14", "gpt-5.2", "sonar-pro",
                  "vicuna-7b-v1.5", "phi-3-mini-4k-instruct",
-                 "nvidia-llama3-8b-instruct", "nvidia-llama3-70b-instruct", "nvidia-codellama-70b",
-                 "nvidia-phi-3-mini-4k-instruct", "nvidia-mistral-7b-instruct",
-                 "nvidia-mixtral-8x7b-instruct", "nvidia-nemotron-4-340b-instruct",
-                 "nvidia-qwen25-coder-32b"]
+                 # NVIDIA NIM (callable on this account, verified 2026-05-14)
+                 "nvidia-llama-3.1-8b-instruct", "nvidia-llama-3.3-70b-instruct",
+                 "nvidia-mixtral-8x7b-instruct",
+                 "nvidia-qwen3-coder-480b",  # only live code specialist (qwen2.5-coder-32b EOL 2026-05-12)
+                 # NVIDIA NIM lightweight (<= 12B)
+                 "nvidia-llama-3.2-1b-instruct", "nvidia-llama-3.2-3b-instruct",
+                 "nvidia-gemma-2-2b-it", "nvidia-gemma-3-12b-it", "nvidia-gemma-3n-e2b-it",
+                 "nvidia-phi-4-mini-instruct",
+                 "nvidia-nemotron-mini-4b-instruct",
+                 "nvidia-llama-3.1-nemotron-nano-8b",
+                 # Mid-size (14B)
+                 "nvidia-ministral-14b-instruct",
+                 # Large flagship (commercial-comparable)
+                 "nvidia-llama-3.1-70b-instruct",
+                 "nvidia-llama-4-maverick-17b",
+                 "nvidia-mistral-medium-3.5-128b", "nvidia-mistral-large-3-675b",
+                 "nvidia-mistral-small-4-119b", "nvidia-mixtral-8x22b-instruct",
+                 "nvidia-llama-3.3-nemotron-super-49b",
+                 "nvidia-nemotron-3-super-120b",
+                 "nvidia-qwen3-next-80b-instruct", "nvidia-qwen3-next-80b-thinking",
+                 "nvidia-dracarys-llama-3.1-70b",
+                 # DeepSeek (transient — preflight will catch)
+                 "nvidia-deepseek-v4-pro", "nvidia-deepseek-v4-flash"]
     )
     parser.add_argument(
         "--attack-max-n-tokens",
@@ -828,10 +847,29 @@ if __name__ == '__main__':
                  "claude-sonnet-4-6", "claude-opus-4-6", "claude-haiku-4-5-20251001",
                  "gemini-pro", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3-flash", "gemini-3-pro",
                  "sonar-pro", "sonar", "vicuna-7b-v1.5", "phi-3-mini-4k-instruct",
-                 "nvidia-llama3-8b-instruct", "nvidia-llama3-70b-instruct", "nvidia-codellama-70b",
-                 "nvidia-phi-3-mini-4k-instruct", "nvidia-mistral-7b-instruct",
-                 "nvidia-mixtral-8x7b-instruct", "nvidia-nemotron-4-340b-instruct",
-                 "nvidia-qwen25-coder-32b"]
+                 # NVIDIA NIM (callable on this account, verified 2026-05-14)
+                 "nvidia-llama-3.1-8b-instruct", "nvidia-llama-3.3-70b-instruct",
+                 "nvidia-mixtral-8x7b-instruct",
+                 "nvidia-qwen3-coder-480b",  # only live code specialist (qwen2.5-coder-32b EOL 2026-05-12)
+                 # NVIDIA NIM lightweight (<= 12B)
+                 "nvidia-llama-3.2-1b-instruct", "nvidia-llama-3.2-3b-instruct",
+                 "nvidia-gemma-2-2b-it", "nvidia-gemma-3-12b-it", "nvidia-gemma-3n-e2b-it",
+                 "nvidia-phi-4-mini-instruct",
+                 "nvidia-nemotron-mini-4b-instruct",
+                 "nvidia-llama-3.1-nemotron-nano-8b",
+                 # Mid-size (14B)
+                 "nvidia-ministral-14b-instruct",
+                 # Large flagship (commercial-comparable)
+                 "nvidia-llama-3.1-70b-instruct",
+                 "nvidia-llama-4-maverick-17b",
+                 "nvidia-mistral-medium-3.5-128b", "nvidia-mistral-large-3-675b",
+                 "nvidia-mistral-small-4-119b", "nvidia-mixtral-8x22b-instruct",
+                 "nvidia-llama-3.3-nemotron-super-49b",
+                 "nvidia-nemotron-3-super-120b",
+                 "nvidia-qwen3-next-80b-instruct", "nvidia-qwen3-next-80b-thinking",
+                 "nvidia-dracarys-llama-3.1-70b",
+                 # DeepSeek (transient — preflight will catch)
+                 "nvidia-deepseek-v4-pro", "nvidia-deepseek-v4-flash"]
     )
     parser.add_argument(
         "--target-max-n-tokens",
@@ -910,10 +948,31 @@ if __name__ == '__main__':
             'claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022',
             'claude-3-opus-20250219',
             'claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5-20251001',
-            'nvidia-llama3-8b-instruct', 'nvidia-llama3-70b-instruct',
-            'nvidia-codellama-70b', 'nvidia-phi-3-mini-4k-instruct',
-            'nvidia-mistral-7b-instruct', 'nvidia-mixtral-8x7b-instruct',
-            'nvidia-nemotron-4-340b-instruct', 'nvidia-qwen25-coder-32b',
+            # NVIDIA NIM (callable on this account, verified 2026-05-14)
+            'nvidia-llama-3.1-8b-instruct', 'nvidia-llama-3.3-70b-instruct',
+            'nvidia-mixtral-8x7b-instruct',
+            'nvidia-qwen3-coder-480b',  # only live code specialist (qwen2.5-coder-32b EOL 2026-05-12)
+            # Safety classifier (binary safe/unsafe — preflight.py blocks this for code-vuln scoring)
+            'nvidia-llama-guard-4-12b',
+            # NVIDIA NIM lightweight (<= 12B) — fast/cheap validators
+            'nvidia-llama-3.2-1b-instruct', 'nvidia-llama-3.2-3b-instruct',
+            'nvidia-gemma-2-2b-it', 'nvidia-gemma-3-12b-it', 'nvidia-gemma-3n-e2b-it',
+            'nvidia-phi-4-mini-instruct',
+            'nvidia-nemotron-mini-4b-instruct',
+            'nvidia-llama-3.1-nemotron-nano-8b',
+            # Mid-size (14B)
+            'nvidia-ministral-14b-instruct',
+            # Large flagship validators (commercial-comparable, all produce SCORE: N)
+            'nvidia-llama-3.1-70b-instruct',
+            'nvidia-llama-4-maverick-17b',
+            'nvidia-mistral-medium-3.5-128b', 'nvidia-mistral-large-3-675b',
+            'nvidia-mistral-small-4-119b', 'nvidia-mixtral-8x22b-instruct',
+            'nvidia-llama-3.3-nemotron-super-49b',
+            'nvidia-nemotron-3-super-120b',
+            'nvidia-qwen3-next-80b-instruct', 'nvidia-qwen3-next-80b-thinking',
+            'nvidia-dracarys-llama-3.1-70b',
+            # DeepSeek (transient — preflight will catch)
+            'nvidia-deepseek-v4-pro', 'nvidia-deepseek-v4-flash',
             'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite',
             'gemini-3-flash', 'gemini-3-pro',
         ],
