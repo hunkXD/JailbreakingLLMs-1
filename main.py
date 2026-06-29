@@ -819,7 +819,9 @@ if __name__ == '__main__':
                  "nvidia-qwen3-next-80b-instruct", "nvidia-qwen3-next-80b-thinking",
                  "nvidia-dracarys-llama-3.1-70b",
                  # DeepSeek (transient — preflight will catch)
-                 "nvidia-deepseek-v4-pro", "nvidia-deepseek-v4-flash"]
+                 "nvidia-deepseek-v4-pro", "nvidia-deepseek-v4-flash",
+                 # Hugging Face Inference Providers (serverless, needs HF_TOKEN)
+                 "hf-deepseek-v3.2", "hf-gemma-3-27b-it", "hf-qwen2.5-coder-32b"]
     )
     parser.add_argument(
         "--attack-max-n-tokens",
@@ -840,13 +842,17 @@ if __name__ == '__main__':
         "--target-model",
         default = "vicuna-13b-v1.5", #TODO changed
         help = "Name of target model.",
-        choices=["vicuna-13b-v1.5", "llama-2-7b-chat-hf", "gpt-3.5-turbo-1106", "gpt-4-0125-preview", "gpt-4.1-2025-04-14", "gpt-5.2",
+        choices=["vicuna-13b-v1.5", "llama-2-7b-chat-hf", "gpt-3.5-turbo-1106", "gpt-4-0125-preview", "gpt-4.1-2025-04-14", "gpt-5.2", "gpt-5-nano-2025-08-07",
                  "claude-instant-1.2", "claude-2.1",
                  "claude-3-haiku-20240307",
                  "claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022", "claude-3-opus-20250219",
                  "claude-sonnet-4-6", "claude-opus-4-6", "claude-haiku-4-5-20251001",
                  "gemini-pro", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3-flash", "gemini-3-pro",
                  "sonar-pro", "sonar", "vicuna-7b-v1.5", "phi-3-mini-4k-instruct",
+                 "llama-2-7b-chat-local",  # original PAIR target, local vLLM (HPC)
+                 "vicuna-13b-v1.5-local",  # other original PAIR target, local vLLM (HPC)
+                 "qwen2.5-coder-32b-instruct",  # local vLLM target (HPC)
+                 "qwen3-coder-30b-a3b-instruct",  # local vLLM target (HPC) — Qwen3 gen, MoE 30B/3B
                  # NVIDIA NIM (callable on this account, verified 2026-05-14)
                  "nvidia-llama-3.1-8b-instruct", "nvidia-llama-3.3-70b-instruct",
                  "nvidia-mixtral-8x7b-instruct",
@@ -869,7 +875,9 @@ if __name__ == '__main__':
                  "nvidia-qwen3-next-80b-instruct", "nvidia-qwen3-next-80b-thinking",
                  "nvidia-dracarys-llama-3.1-70b",
                  # DeepSeek (transient — preflight will catch)
-                 "nvidia-deepseek-v4-pro", "nvidia-deepseek-v4-flash"]
+                 "nvidia-deepseek-v4-pro", "nvidia-deepseek-v4-flash",
+                 # Hugging Face Inference Providers (serverless, needs HF_TOKEN)
+                 "hf-deepseek-v3.2", "hf-gemma-3-27b-it", "hf-qwen2.5-coder-32b"]
     )
     parser.add_argument(
         "--target-max-n-tokens",

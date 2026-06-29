@@ -1,4 +1,5 @@
 from enum import Enum
+import os
 VICUNA_PATH = "/home/pchao/vicuna-13b-v1.5"
 LLAMA_PATH = "/home/pchao/Llama-2-7b-chat-hf"
 
@@ -14,11 +15,20 @@ class Model(Enum):
     llama_2 = "llama-2-7b-chat-hf"
     vicuna_7b_local = "vicuna-7b-v1.5"
     phi3_local = "phi-3-mini-4k-instruct"
+    # Original PAIR target, self-hosted via vLLM on the HPC (OpenAI-compatible
+    # endpoint). Distinct from `llama_2` (Together.ai API) so both routes coexist.
+    llama_2_local = "llama-2-7b-chat-local"
+    # Other original PAIR target, self-hosted via vLLM on the HPC. Distinct
+    # value from `vicuna` (Together.ai API) so both routes coexist.
+    vicuna_13b_local = "vicuna-13b-v1.5-local"
+    qwen_coder_32b_local = "qwen2.5-coder-32b-instruct"   # local vLLM target (HPC)
+    qwen3_coder_30b_local = "qwen3-coder-30b-a3b-instruct" # local vLLM target (HPC) — Qwen3 gen, MoE 30B/3B
     gpt_3_5 = "gpt-3.5-turbo-1106"
     gpt_4_base = "gpt-4"
     gpt_4 = "gpt-4-0125-preview"
     gpt_4_1 = "gpt-4.1-2025-04-14"
     gpt_5_2 = "gpt-5.2"
+    gpt_5_nano = "gpt-5-nano-2025-08-07"   # smallest/cheapest GPT-5 (reasoning model)
     claude_1 = "claude-instant-1.2"
     claude_2 = "claude-2.1"
     claude_3_haiku = "claude-3-haiku-20240307"
@@ -76,6 +86,12 @@ class Model(Enum):
     # DeepSeek (transient availability on this account — preflight will catch)
     nvidia_deepseek_v4_pro = "nvidia-deepseek-v4-pro"             # flagship reasoning
     nvidia_deepseek_v4_flash = "nvidia-deepseek-v4-flash"         # smaller flagship
+    # --- Hugging Face Inference Providers (serverless, routed via litellm) ---
+    # Format: huggingface/<provider>/<org>/<model>. Requires HF_TOKEN.
+    # Provider + live status verified against router.huggingface.co on 2026-05-31.
+    hf_deepseek_v3_2 = "hf-deepseek-v3.2"            # novita; reasoning model — cap max tokens
+    hf_gemma3_27b = "hf-gemma-3-27b-it"              # scaleway; multimodal weights, text used here
+    hf_qwen25_coder_32b = "hf-qwen2.5-coder-32b"     # nscale; cheapest, code specialist
     # --- Removed 2026-05-14 (confirmed 404/410 on inference probe) ---
     # nvidia_mistral_7b_v3              = "nvidia-mistral-7b-instruct-v0.3"
     # nvidia_qwen25_coder_32b           = "nvidia-qwen25-coder-32b"           # EOL 2026-05-12; use nvidia_qwen3_coder_480b instead
@@ -136,12 +152,25 @@ NVIDIA_MODEL_NAMES: dict[Model, str] = {
     Model.nvidia_deepseek_v4_flash: "nvidia_nim/deepseek-ai/deepseek-v4-flash",
 }
 
+# Hugging Face Inference Providers (serverless). litellm routes these via the
+# `huggingface/<provider>/<org>/<model>` scheme using HF_TOKEN. The provider
+# segment pins which backend HF forwards to (pricing/availability differ per
+# provider). Verified live on router.huggingface.co on 2026-05-31. To add a
+# model: pick an entry with status "live" from that catalog and copy its
+# provider + canonical repo id here.
+HF_INFERENCE_MODEL_NAMES: dict[Model, str] = {
+    Model.hf_deepseek_v3_2: "huggingface/novita/deepseek-ai/DeepSeek-V3.2",
+    Model.hf_gemma3_27b: "huggingface/scaleway/google/gemma-3-27b-it",
+    Model.hf_qwen25_coder_32b: "huggingface/nscale/Qwen/Qwen2.5-Coder-32B-Instruct",
+}
+
 FASTCHAT_TEMPLATE_NAMES: dict[Model, str] = {
     Model.gpt_3_5: "gpt-3.5-turbo",
     Model.gpt_4_base: "gpt-4",
     Model.gpt_4: "gpt-4",
     Model.gpt_4_1: "gpt-4.1",
     Model.gpt_5_2: "gpt-5.2",
+    Model.gpt_5_nano: "gpt-4",
     Model.claude_1: "zero_shot",
     Model.claude_2: "zero_shot",
     Model.claude_3_haiku: "zero_shot",
@@ -161,6 +190,10 @@ FASTCHAT_TEMPLATE_NAMES: dict[Model, str] = {
     Model.llama_2: "llama-2-7b-chat-hf",
     Model.vicuna_7b_local: "vicuna_v1.1",
     Model.phi3_local: "zero_shot",
+    Model.llama_2_local: "llama-2-7b-chat-hf",  # local vLLM target — same template as the Together llama_2
+    Model.vicuna_13b_local: "vicuna_v1.1",      # local vLLM target — same template as the Together vicuna
+    Model.qwen_coder_32b_local: "qwen",   # local vLLM target — same template as other Qwen models
+    Model.qwen3_coder_30b_local: "qwen",  # local vLLM target — same template as other Qwen models
     Model.mixtral: "mixtral",
     Model.sonar: "sonar-pro",
     Model.sonar_chat: "sonar",
@@ -194,6 +227,10 @@ FASTCHAT_TEMPLATE_NAMES: dict[Model, str] = {
     Model.nvidia_dracarys_llama31_70b: "llama-3",
     Model.nvidia_deepseek_v4_pro: "zero_shot",
     Model.nvidia_deepseek_v4_flash: "zero_shot",
+    # Hugging Face Inference Providers
+    Model.hf_deepseek_v3_2: "zero_shot",
+    Model.hf_gemma3_27b: "gemma",
+    Model.hf_qwen25_coder_32b: "qwen",
 }
 
 API_KEY_NAMES: dict[Model, str] = {
@@ -202,6 +239,7 @@ API_KEY_NAMES: dict[Model, str] = {
     Model.gpt_4:    "OPENAI_API_KEY",
     Model.gpt_4_1:  "OPENAI_API_KEY",
     Model.gpt_5_2:  "OPENAI_API_KEY",
+    Model.gpt_5_nano: "OPENAI_API_KEY",
     Model.claude_1: "ANTHROPIC_API_KEY",
     Model.claude_2: "ANTHROPIC_API_KEY",
     Model.claude_3_haiku: "ANTHROPIC_API_KEY",
@@ -224,6 +262,10 @@ API_KEY_NAMES: dict[Model, str] = {
     Model.sonar_chat: "PERPLEXITYAI_API_KEY",
     Model.vicuna_7b_local: "LMSTUDIO_API_KEY",
     Model.phi3_local: "LMSTUDIO_API_KEY",
+    Model.llama_2_local: "LOCAL_API_KEY",   # vLLM ignores it; the var just needs to exist
+    Model.vicuna_13b_local: "LOCAL_API_KEY",
+    Model.qwen_coder_32b_local: "LOCAL_API_KEY",
+    Model.qwen3_coder_30b_local: "LOCAL_API_KEY",
     # NVIDIA NIM Models - all use the same API key
     Model.nvidia_llama31_8b: "NVIDIA_NIM_API_KEY",
     Model.nvidia_llama33_70b: "NVIDIA_NIM_API_KEY",
@@ -252,11 +294,24 @@ API_KEY_NAMES: dict[Model, str] = {
     Model.nvidia_dracarys_llama31_70b: "NVIDIA_NIM_API_KEY",
     Model.nvidia_deepseek_v4_pro: "NVIDIA_NIM_API_KEY",
     Model.nvidia_deepseek_v4_flash: "NVIDIA_NIM_API_KEY",
+    # Hugging Face Inference Providers - all use the same token
+    Model.hf_deepseek_v3_2: "HF_TOKEN",
+    Model.hf_gemma3_27b: "HF_TOKEN",
+    Model.hf_qwen25_coder_32b: "HF_TOKEN",
 }
 
 LOCAL_MODEL_API_BASES: dict[Model, str] = {
     Model.vicuna_7b_local: "http://127.0.0.1:1234/v1",
     Model.phi3_local: "http://127.0.0.1:1234/v1",
+    # Local vLLM server on an HPC GPU node. The port is injected at runtime by
+    # the SLURM job (QWEN_LOCAL_API_BASE) so it can pick a free port on a
+    # shared node; falls back to :8000 for a local LM Studio-style setup.
+    Model.qwen_coder_32b_local: os.environ.get("QWEN_LOCAL_API_BASE", "http://127.0.0.1:8000/v1"),
+    Model.qwen3_coder_30b_local: os.environ.get("QWEN_LOCAL_API_BASE", "http://127.0.0.1:8000/v1"),
+    # Llama-2-7B-chat served by vLLM (HPC). The SLURM job injects the free port
+    # via LLAMA_LOCAL_API_BASE; falls back to :8000 for a local setup.
+    Model.llama_2_local: os.environ.get("LLAMA_LOCAL_API_BASE", "http://127.0.0.1:8000/v1"),
+    Model.vicuna_13b_local: os.environ.get("VICUNA_LOCAL_API_BASE", "http://127.0.0.1:8000/v1"),
 }
 
 LITELLM_TEMPLATES: dict[Model, dict] = {

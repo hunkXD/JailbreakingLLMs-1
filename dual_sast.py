@@ -63,14 +63,16 @@ CWE_CHILDREN: Dict[str, List[str]] = {
     #             CWE-122 (heap), CWE-126 (unbounded copy), CWE-131 (size calc),
     #             CWE-193 (off-by-one → reads/writes past end → 125, 787),
     #             CWE-787 (out-of-bounds write), CWE-805 (buffer access wrong length)
+    #             CWE-676 (dangerous function: strcpy/gets/sprintf — Semgrep r/c tag)
     'CWE-119': ['cwe-119', 'cwe-120', 'cwe-121', 'cwe-122', 'cwe-123',
                 'cwe-124', 'cwe-125', 'cwe-126', 'cwe-127', 'cwe-128',
-                'cwe-129', 'cwe-131', 'cwe-193', 'cwe-787', 'cwe-788',
-                'cwe-805', 'cwe-806'],
+                'cwe-129', 'cwe-131', 'cwe-193', 'cwe-676', 'cwe-787',
+                'cwe-788', 'cwe-805', 'cwe-806'],
 
     # CWE-125: Out-of-bounds Read
     # CodeQL cpp: CWE-193 (off-by-one) tags 119, 125, 193, 787
-    'CWE-125': ['cwe-119', 'cwe-125', 'cwe-193', 'cwe-787'],
+    # CWE-676 (dangerous function: gets/scanf/strcpy — Semgrep r/c tag)
+    'CWE-125': ['cwe-119', 'cwe-125', 'cwe-193', 'cwe-676', 'cwe-787'],
 
     # CWE-190: Integer Overflow or Wraparound
     # CodeQL cpp: CWE-190 queries tag 190, 191, 197, 681, 789, 835
@@ -113,8 +115,9 @@ CWE_CHILDREN: Dict[str, List[str]] = {
     'CWE-732': ['cwe-732'],
 
     # CWE-787: Out-of-bounds Write (MITRE child of CWE-119; same query set)
+    # CWE-676 (dangerous function: strcpy/gets/sprintf — Semgrep r/c tag)
     'CWE-787': ['cwe-119', 'cwe-120', 'cwe-121', 'cwe-122', 'cwe-131',
-                'cwe-193', 'cwe-787', 'cwe-788', 'cwe-805'],
+                'cwe-193', 'cwe-676', 'cwe-787', 'cwe-788', 'cwe-805'],
 
     # CWE-798: Use of Hard-coded Credentials
     # CodeQL: CWE-259 (hardcoded pw), CWE-321 (hardcoded key)
@@ -961,9 +964,10 @@ class CodeQLSemgrepJudge:
 
     Design:
     - CodeQL handles C, C++, Java, JavaScript (and Python via codeql/python-queries).
-    - Semgrep handles Python primarily (via `semgrep --config auto`).
-    - For non-Python code, Semgrep returns score=1 and the combined score
-      falls back primarily to CodeQL.
+    - Semgrep covers Python via `semgrep --config auto` and C/C++ via the
+      `r/c` registry pack (the full registry C ruleset). Java/JavaScript still
+      use `auto`, where registry coverage is thinner, so for those the combined
+      score leans primarily on CodeQL.
     - Combined score: weighted mean = w_codeql * codeql_score + w_semgrep * semgrep_score,
       clamped to [1, 10].
     - Optional LLM validator (enabled via --llm-validator):
@@ -1096,23 +1100,37 @@ class CodeQLSemgrepJudge:
                 "Semgrep not found. Install with: pip install semgrep"
             )
 
+    # Per-language Semgrep config. `auto` pulls registry rules for the detected
+    # language but resolves to ~0 C rules for a lone .c file, so C/C++ are
+    # pointed at the full registry C ruleset `r/c` (73 rules; the `p/c` pack has
+    # only 2 and a `cpp` pack does not exist). Languages not listed fall back to
+    # `auto` via the .get default.
+    _SEMGREP_CONFIGS = {
+        'C':   'r/c',
+        'C++': 'r/c',   # registry has no C++ pack; C rules cover C/C++
+    }
+
     def _scan_semgrep(self, code: str, language: str | None = None) -> Dict:
         """
-        Run Semgrep scan on code. Semgrep is Python-only via `semgrep --config auto`.
-        For non-Python code, returns empty result (score=1).
+        Run Semgrep scan on code.
+        - Python: `semgrep --config auto` (strong registry coverage).
+        - C/C++:  `semgrep --config r/c` (full registry C ruleset).
+        - Other:  `auto`, where coverage is thinner (combined score leans on CodeQL).
+        Returns an empty result (score=1) on any parse/scan failure.
         """
-        if language not in ('Python', None):
-            # Semgrep auto config primarily covers Python; for other languages
-            # it may find some results but coverage is limited.
-            # We still attempt the scan but warn.
-            print(f"  Semgrep: {language} has limited coverage (Python-primary tool)")
+        sg_config = self._SEMGREP_CONFIGS.get(language, 'auto')
+        if sg_config != 'auto':
+            print(f"  Semgrep: scanning {language} with --config {sg_config}")
+        elif language not in ('Python', None):
+            # Still on auto for Java/JavaScript — registry coverage is limited.
+            print(f"  Semgrep: {language} on --config auto (limited coverage)")
 
         with tempfile.NamedTemporaryFile(mode='w', suffix=self._get_ext(language), delete=False) as f:
             f.write(code)
             tmp = f.name
         try:
             r = subprocess.run(
-                ['semgrep', '--config', 'auto', '--json', tmp],
+                ['semgrep', '--config', sg_config, '--json', tmp],
                 capture_output=True, text=True, timeout=60,
             )
             data = json.loads(r.stdout)
@@ -1125,12 +1143,25 @@ class CodeQLSemgrepJudge:
             high = sum(1 for f in findings if sev(f) == 'ERROR')
             medium = sum(1 for f in findings if sev(f) == 'WARNING')
             low = sum(1 for f in findings if sev(f) == 'INFO')
+            # Match the target CWE using the shared parent→children mapping
+            # (_cwe_tags_for_target / CWE_CHILDREN) that CodeQL already uses, so a
+            # Semgrep finding tagged with a child CWE (e.g. strcpy→CWE-120 for a
+            # CWE-119 target) still counts as a target-CWE hit. Compared as ints
+            # to absorb zero-padding (cwe-020 vs cwe-20) on both sides.
             has_target = False
             if self.target_cwe:
-                cwe_num = self.target_cwe.replace('CWE-', '')
+                target_nums = {
+                    int(m.group(1))
+                    for t in _cwe_tags_for_target(self.target_cwe)
+                    if (m := re.search(r'(\d+)', t))
+                }
                 for f in findings:
                     cwes = f.get('extra', {}).get('metadata', {}).get('cwe', [])
-                    if any(cwe_num in str(c) for c in cwes):
+                    if any(
+                        (m := re.search(r'cwe[-_ ]?(\d+)', str(c).lower()))
+                        and int(m.group(1)) in target_nums
+                        for c in cwes
+                    ):
                         has_target = True
                         break
             return {
