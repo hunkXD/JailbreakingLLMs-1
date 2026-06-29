@@ -1,6 +1,6 @@
 import os
 import litellm
-from config import TOGETHER_MODEL_NAMES, NVIDIA_MODEL_NAMES, LITELLM_TEMPLATES, API_KEY_NAMES, LOCAL_MODEL_API_BASES, Model
+from config import TOGETHER_MODEL_NAMES, NVIDIA_MODEL_NAMES, HF_INFERENCE_MODEL_NAMES, LITELLM_TEMPLATES, API_KEY_NAMES, LOCAL_MODEL_API_BASES, Model
 from loggers import logger
 from common import get_api_key
 import time
@@ -179,6 +179,12 @@ class APILiteLLM(LanguageModel):
             litellm_name = NVIDIA_MODEL_NAMES[model_name]
             self.use_open_source_model = False
             self.api_base = None
+        elif model_name in HF_INFERENCE_MODEL_NAMES:
+            # HF Inference Providers: litellm formats the chat server-side, so
+            # treat like other hosted APIs (no fastchat prompt template / eos).
+            litellm_name = HF_INFERENCE_MODEL_NAMES[model_name]
+            self.use_open_source_model = False
+            self.api_base = None
         else:
             self.use_open_source_model = False
             self.api_base = None
@@ -228,11 +234,21 @@ class APILiteLLM(LanguageModel):
             self._update_prompt_template()
 
         # Determine correct parameters for newer OpenAI models
-        # GPT-4.1+, GPT-5.2+: use max_completion_tokens, no stop parameter
+        # GPT-4.1+, GPT-5.x: use max_completion_tokens, no stop parameter
         is_new_openai_model = any([
             'gpt-5' in self.litellm_model_name.lower(),
             'gpt-4.1' in self.litellm_model_name.lower(),
         ])
+
+        # GPT-5 reasoning models (gpt-5, -mini, -nano; NOT gpt-5-chat) only accept
+        # the default temperature (1) and reject a custom top_p; sending temperature=0
+        # returns a 400. They also spend output tokens on hidden reasoning, so we
+        # request minimal reasoning effort to leave the budget for the code answer
+        # (and to keep cost down).
+        is_gpt5_reasoning = (
+            'gpt-5' in self.litellm_model_name.lower()
+            and 'chat' not in self.litellm_model_name.lower()
+        )
 
         # Claude models reject requests with both temperature and top_p set
         is_claude_model = 'claude' in self.litellm_model_name.lower()
@@ -249,21 +265,31 @@ class APILiteLLM(LanguageModel):
             'model': self.litellm_model_name,
             'messages': convs_list,
             'api_key': self.api_key,
-            'temperature': temperature,
             'num_retries': self.API_MAX_RETRY,
             'timeout': 120,
             'seed': 0,
         }
 
-        # Only include top_p for non-Claude models
-        if not is_claude_model:
+        # Temperature: GPT-5 reasoning models only support the default (1), so omit
+        # it for them; every other model uses the requested temperature.
+        if not is_gpt5_reasoning:
+            completion_params['temperature'] = temperature
+
+        # Only include top_p for non-Claude, non-GPT-5-reasoning models
+        if not is_claude_model and not is_gpt5_reasoning:
             completion_params['top_p'] = top_p
+
+        # Minimise hidden reasoning so the token budget goes to the answer
+        if is_gpt5_reasoning:
+            completion_params['reasoning_effort'] = 'minimal'
 
         if self.api_base:
             completion_params['api_base'] = self.api_base
 
-        # Add stop sequences only for models that support them
-        if not is_new_openai_model:
+        # Add stop sequences only for models that support them, and only when
+        # non-empty. NVIDIA NIM rejects an empty stop array with a 400
+        # ("Stop sequences array cannot be empty"); OpenAI tolerates it.
+        if not is_new_openai_model and eos_tokens:
             completion_params['stop'] = eos_tokens
 
         # Add correct max tokens parameter based on model
