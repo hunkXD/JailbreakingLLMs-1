@@ -1,0 +1,47 @@
+# Virtual environment
+venv/
+
+# Google Cloud SDK
+google-cloud-sdk/
+google-cloud-cli-*.tar.gz
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Large run data (kept locally, synced to WandB cloud)
+wandb/
+conversation_logs/
+iteration_logs/
+codeql_logs/
+logs/
+
+# IDE
+.idea/
+
+# Secrets - NEVER commit these
+setup.txt
+.env
+*.env
+
+# LLMSecEval run outputs (dataset CSVs are tracked, logs are not)
+LLMSecEval/*.txt
+LLMSecEval_test/
+
+# Misc local-only dirs
+export/
+claude.txt
+claude_conversations/
+
+# Backups and temp files
+*.backup
+*.before_fix
+backups_*/
+code_row*.py
+run_output*.log
+test_output.log
+
+# Dated dump / scratch files
+20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]-*.txt
+Recommended_changes_*.txt
+session-ses_*.md
